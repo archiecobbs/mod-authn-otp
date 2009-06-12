@@ -1,0 +1,13 @@
+
+To build and install mod-authn-otp:
+
+    1. Ensure you have the following software packages installed:
+
+        apache2-devel
+        openssl-devel
+
+    2. Run `./configure'
+    3. Run `make'
+    4. Run `make install'
+
+$Id$
