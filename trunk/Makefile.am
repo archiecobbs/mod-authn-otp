@@ -22,7 +22,8 @@
 all:	build
 
 build:
-		$(APXS) -c -D_REENTRANT `echo $(GCC_WARN_FLAGS) | sed -r 's/ -/ -Wc,-/g'` $(srcdir)/mod_authn_otp.c
+		test "$(srcdir)" != "." && $(CP) $(srcdir)/mod_authn_otp.c .
+		$(APXS) -c -D_REENTRANT `echo $(GCC_WARN_FLAGS) | sed -r 's/ -/ -Wc,-/g'` mod_authn_otp.c
 
 install:
 		$(APXS) -S LIBEXECDIR="$(DESTDIR)`$(APXS) -q LIBEXECDIR`" -i mod_authn_otp.la
@@ -35,6 +36,5 @@ doc_DATA=           CHANGES LICENSE README INSTALL TODO
 
 AM_CFLAGS=          $(CFLAGS)
 
-#EXTRA_DIST=         CHANGES LICENSE mod_authn_otp.spec
-EXTRA_DIST=         CHANGES LICENSE
+EXTRA_DIST=         CHANGES LICENSE mod_authn_otp.c users.sample
 
