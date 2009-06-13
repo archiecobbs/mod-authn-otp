@@ -31,7 +31,7 @@ AC_PROG_MAKE_SET
 # Check for required programs
 AC_PROG_CC
 AC_PATH_PROG(CP, cp)
-AC_PATH_PROG(APXS, apxs2, "no")
+AC_PATH_PROG(APXS, apxs2, "no", [/usr/sbin /usr/local/bin /usr/local/sbin /usr/local/apache/bin])
 [test x"$APXS" = "xno" && ] AC_MSG_ERROR([cannot find apxs2])
 
 # Add GCC flags

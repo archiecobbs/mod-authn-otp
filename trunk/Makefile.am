@@ -19,22 +19,14 @@
 # $Id$
 #
 
-all:	build
-
-build:
+module:
 		if test "$(srcdir)" != "."; then $(CP) $(srcdir)/mod_authn_otp.c .; fi
 		$(APXS) -c -D_REENTRANT `echo $(GCC_WARN_FLAGS) | sed -r 's/ -/ -Wc,-/g'` mod_authn_otp.c
 
-install:
+install-exec-local: module
 		$(APXS) -S LIBEXECDIR="$(DESTDIR)`$(APXS) -q LIBEXECDIR`" -i mod_authn_otp.la
 
 CLEANFILES=         *.la *.lo *.o *.so *.slo .lib/*
-
-docdir=             $(datadir)/doc/packages/$(PACKAGE)
-
-doc_DATA=           CHANGES LICENSE README INSTALL TODO
-
-AM_CFLAGS=          $(CFLAGS)
 
 EXTRA_DIST=         CHANGES LICENSE mod_authn_otp.c users.sample
 
