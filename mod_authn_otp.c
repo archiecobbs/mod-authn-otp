@@ -543,16 +543,17 @@ get_config(request_rec *r)
     struct otp_config *dir_conf;
     struct otp_config *conf;
 
-    /* XXX TEMPORARY HACK until I figure out this bug */
-    if (r->per_dir_config != NULL)
-        dir_conf = ap_get_module_config(r->per_dir_config, &authn_otp_module);
-    else {
-        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "WTF?!? Why is r->per_dir_config NULL?");
+    /* I don't understand this bug: sometimes r->per_dir_config == NULL */
+    if (r->per_dir_config == NULL) {
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "Oops, bug detected in mod_authn_otp: r->per_dir_config == NULL?");
         dir_conf = create_authn_otp_dir_config(r->pool, NULL);
-        dir_conf->users_file = apr_pstrdup(r->pool, "/tmp/mod-authn-otp-users");
-    }
+#if 0
+        dir_conf->users_file = apr_pstrdup(r->pool, "/home/archie/otpdir/users");
+#endif
+    } else
+        dir_conf = ap_get_module_config(r->per_dir_config, &authn_otp_module);
 
-    /* Duplicate per-directory config */
+    /* Make a copy of the current per-directory config */
     conf = apr_pcalloc(r->pool, sizeof(*conf));
     if (dir_conf->users_file != NULL)
         conf->users_file = apr_pstrdup(r->pool, dir_conf->users_file);
@@ -561,7 +562,7 @@ get_config(request_rec *r)
     conf->max_offset = dir_conf->max_offset;
     conf->max_linger = dir_conf->max_linger;
 
-    /* Apply defaults for unset values */
+    /* Apply defaults for any unset values */
     if (conf->ndigits == -1)
         conf->ndigits = DEFAULT_NUM_DIGITS;
     if (conf->time_interval == -1)
