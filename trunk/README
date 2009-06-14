@@ -16,6 +16,8 @@ mod_authn_otp supports both basic and digest authentication, and will
 auto-synchronize with the user's token within a configurable maximum
 offset (auto-synchronization is not supported with digest authentication).
 
-Website: http://mod-authn-otp.googlecode.com/
+For configuration information and other details please see:
+
+    http://mod-authn-otp.googlecode.com/
 
 $Id$
