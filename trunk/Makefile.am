@@ -19,7 +19,9 @@
 # $Id$
 #
 
-module:
+all-local:    module
+
+module: mod_authn_otp.c
 		if test "$(srcdir)" != "."; then $(CP) $(srcdir)/mod_authn_otp.c .; fi
 		$(APXS) -c -D_REENTRANT `echo $(GCC_WARN_FLAGS) | sed -r 's/ -/ -Wc,-/g'` mod_authn_otp.c
 

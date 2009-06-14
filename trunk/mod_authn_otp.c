@@ -108,6 +108,7 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
     char newusersfile[APR_PATH_MAX];
     char lockusersfile[APR_PATH_MAX];
     char linebuf[1024];
+    char linecopy[1024];
     apr_file_t *file = NULL;
     apr_file_t *newfile = NULL;
     apr_file_t *lockfile = NULL;
@@ -157,6 +158,9 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
 
     /* Scan entries */
     for (linenum = 1; apr_file_gets(linebuf, sizeof(linebuf), file) == 0; linenum++) {
+
+        /* Save a copy of the line */
+        snprintf(linecopy, sizeof(linecopy), "%s", linebuf);
 
         /* Ignore lines starting with '#' and empty lines */
         if (*linebuf == '#')
@@ -263,7 +267,7 @@ invalid:
 copy:
         /* Copy line to new file */
         if (newfile != NULL)
-            apr_file_puts(linebuf, newfile);
+            apr_file_puts(linecopy, newfile);
     }
     apr_file_close(file);
     file = NULL;
@@ -402,7 +406,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *passw
         return AUTH_DENIED;
     }
 
-    /* Check for reuse of previous OTP within linger time */
+    /* Check for reuse of previous OTP within the configured linger time */
     now = time(NULL);
     if (now >= user->last_auth && now < user->last_auth + conf->max_linger && strcmp(otp_given, user->last_otp) == 0) {
         ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "accepting reuse of OTP for \"%s\" within %d sec. linger time",
@@ -491,6 +495,7 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
     char otpbuf[32];
     char hashbuf[1024];
     int counter;
+    int linger;
     time_t now;
 
     /* Is the users file configured? */
@@ -505,11 +510,21 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
     if ((status = find_update_user(r, conf->users_file, user, 0)) != AUTH_USER_FOUND)
         return status;
 
-    /* Determine the expected OTP, assuming OTP reuse within the linger time */
+    /* Determine the expected OTP, assuming OTP reuse if we are within the linger time */
     now = time(NULL);
-    if (user->last_auth >= now && user->last_auth - now < conf->max_linger)
+    if (now >= user->last_auth && now < user->last_auth + conf->max_linger) {
+        ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r,
+          "generating digest hash for \"%s\" assuming reuse of OTP within %d sec. linger time",
+          user->username, conf->max_linger);
         apr_snprintf(otpbuf, sizeof(otpbuf), "%s", user->last_otp);
-    else {
+        linger = 1;
+    } else {
+
+        /* Log note if previous OTP has expired */
+        if (user->last_auth != 0 && *user->last_otp != '\0') {
+            ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "not using previous expired OTP for user \"%s\" (max linger is %d sec.)",
+              user->username, conf->max_linger);
+        }
 
         /* Get expected counter value */
         switch (user->type) {
@@ -525,12 +540,36 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
         }
 
         /* Generate OTP using expected counter */
+        ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "generating digest hash for \"%s\" assuming OTP counter %d",
+          user->username, counter);
         genotp(user->key, user->keylen, counter, conf->ndigits, otpbuf, sizeof(otpbuf));
+        linger = 0;
     }
 
     /* Generate digest hash */
     apr_snprintf(hashbuf, sizeof(hashbuf), "%s:%s:%s%s", user->username, realm, user->pin, otpbuf);
     *rethash = ap_md5(r->pool, (void *)hashbuf);
+
+#if 0
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "OTP=\"%s\" counter=%d user=\"%s\" realm=\"%s\" pin=\"%s\" digest=\"%s\"",
+      otpbuf, counter, user->username, realm, user->pin, *rethash);
+#endif
+
+    /* If we are past the previous linger time, assume counter advance and update user's info */
+    if (!linger) {
+        switch (user->type) {
+        case OTP_TYPE_EVENT:                    /* advance counter by one */
+            user->offset = counter + 1;
+            break;
+        default:
+            break;
+        }
+        apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", otpbuf);
+        user->last_auth = now;
+        find_update_user(r, conf->users_file, user, 1);
+    }
+
+    /* Done */
     return AUTH_USER_FOUND;
 }
 
