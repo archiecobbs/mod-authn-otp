@@ -1,0 +1,95 @@
+#summary How to configure the Apache 2.x server
+
+== Overview ==
+
+The *mod_authn_otp* module is an Apache [http://httpd.apache.org/docs/2.2/howto/auth.html authentication provider]. That basically means it knows how to retrieve the passwords corresponding to usernames when HTTP basic or digest authentication is performed.
+
+== Configuring Apache ==
+
+As such, the first thing to do to enable one-time passwords is to tell Apache to use the *OTP* provider for authentication.
+
+For example, if you want basic authentication you'd do something like this:
+{{{
+<Directory "/protected/stuff">
+    AuthType basic
+    AuthName "My Protected Area"
+    AuthBasicProvider OTP
+    Require valid-user
+    # other options...
+</Directory>
+}}}
+For digest authentication, you'd do something like this:
+{{{
+<Directory "/protected/stuff">
+    AuthType digest
+    AuthName "My Protected Area"
+    AuthDigestProvider OTP
+    Require valid-user
+    # other options...
+</Directory>
+}}}
+(but *see the DigestAuthentication wiki page for limitations of OTP when used with digest authentication*)
+
+Next, sprinkle in whatever additional usual Apache configuration directives you want.
+
+== Configuring mod_authn_otp ==
+
+Finally, configure the *mod_authn_otp* specific directives:
+
+|| *Directive* || *Type* || *Default* || *Required?* || *Description* ||
+|| *OTPAuthUsersFile* || File ||  _N/A_  || Yes || Specifies the users file containing user and token information ||
+|| *OTPAuthNumDigits* || Number || 6 || No || How many digits are in generated one-time passwords (not including PIN prefix) ||
+|| *OTPAuthTimeInterval* || Number || 30 || No || The length in seconds of one time interval for time-based tokens ||
+|| *OTPAuthMaxOffset* || Number || 4 || No || Maximum allowed offset from the expected token counter value ||
+|| *OTPAuthMaxLinger* || Number || 600 || No || Maximum allowed linger time in seconds ||
+
+A detailed description of each directive follows.
+
+=== OTPAuthUsersFile ===
+
+This directive configures the *users file* which is plain text file that functions as *mod_authn_otp*'s database. See the UsersFile wiki page for more information about its format.
+
+The system file permissions assigned to this file and its containing directory are important for proper operation. In order to function correctly, *mod_authn_otp* must be able to:
+* Create a new file in the same directory as the users file
+* Delete the users file
+
+An example users file is included in the distribution and is reproduced here:
+{{{
+# Example users file for mod_authn_otp
+#
+# Fields:
+#
+# 1. Token Type         'E' for event based, 'T' for time based
+# 2. Username           User's username
+# 3. PIN                User's PIN prefix or "-" if user has no PIN
+# 4. Token Key          Secret key for the token algorithm (see RFC 4226)
+# 5. Counter/Offset     Next expected counter value (event tokens) or counter offset (time tokens)
+# 6. Last OTP           The previous successfully used one-time password
+# 7. Time of Last OTP   Local timestamp when the last OTP was generated (in the form 2009-06-12T17:52:32L)
+#
+# Fields 5 and beyond are optional. Fields 6 and beyond should be omitted for new users.
+#
+# For more info see: http://mod-authn-otp.googlecode.com/
+#
+
+E barney        1234    8a2d55707a9084982649dadc04b426a06df19ab2 21      820658  2009-06-12T17:52:32L
+E fred          5678    acbd18db4cc2f85cedef654fccc4a4d8bd537891 78      617363  2009-06-04T21:17:03L
+T joe           999999  ef654fccdef654fccc4a4d8acbd18db4cc2f85ce -2      883913  2009-06-04T21:17:03L
+
+# Wilma and better are new users. Note betty does not have a PIN so "-" is used instead as a placeholder
+
+E wilma         5678    a4d8acbddef654fccc418db4cc2f85cea6339f00
+E betty         -       54fccc418a4d8acbddef6db4cc2f85ce99321d64
+}}}
+
+=== OTPAuthNumDigits ===
+
+This directive specifies how many digits are in a single one-time password. This is almost always six, but the specification allows for up to as many as ten digits.
+
+=== OTPAuthTimeInterval ===
+
+Tokens come in two flavors: event based and time based. This directive applies to time based tokens only and it specifies how long a single time interval is. The standard value out there seems to be 30 seconds. Note that time based tokens simply will not work if they are using a different value than is configured here.
+
+=== OTPAuthMaxOffset ===
+
+=== OTPAuthMaxLinger ===
