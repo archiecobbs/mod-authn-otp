@@ -49,7 +49,7 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 #define WHITESPACE              " \t\r\n\v"
 #define NEWFILE_SUFFIX          ".new"
 #define LOCKFILE_SUFFIX         ".lock"
-#define TIME_FORMAT             "%Y-%m-%dT%H:%M:%SZ"
+#define TIME_FORMAT             "%Y-%m-%dT%H:%M:%SL"
 
 /* OTP counter types */
 #define OTP_TYPE_EVENT          1
