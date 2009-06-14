@@ -2,6 +2,9 @@
 - Wiki page: description of how it works (equivalent to reference manual)
 - Wiki page: configuration options
 - Wiki page: digest authentication and how it's different
+  - Event based tokens not recommended with digest auth
+    - Easy to get out of sync with one incorrect login
+    - Possible DOS attack
 - Wiki page: format of the users file
 - Wiki page: tokens for iphone, etc.
 
