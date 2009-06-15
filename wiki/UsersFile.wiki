@@ -2,7 +2,9 @@
 
 == Overview ==
 
-You will need to create this file manually and be sure to set the permissions correctly (see below). Each line defines one user+token combination (currently a user may only have a single token associated with them).
+The users file contains the secret information about users, PINs, and token keys on the server. It's location is configured via the {{{OTPAuthUsersFile}}} directive. This file is updated (rewritten) whenever the server needs to save new information. Therefore, you should only edit it when the server is stopped (or no authentication is occurring).
+
+You will need to create this file manually and be sure to set the permissions correctly (see below). Each line defines one user+token combination. Currently a user may only have a single associated token.
 
 Users may have an arbitrary length PIN, or a dash ("-") for no PIN. If a PIN is defined, it must precede the one-time password in the HTTP password field. For example, if a user has PIN "1234" and the token generates the one-time password of "567890", then the user must enter "1234567890" as their password for HTTP authentication.
 
@@ -12,7 +14,7 @@ See OneTimePasswords and [Tokens] for more information about how one-time passow
 
 == Permissions ==
 
-The Apache web server must have permission to create files in the same directory as this file, and to delete (overwrite) this file with an updated copy.
+The Apache web server must have permission to create files in the same directory as this file, and to delete (overwrite) this file with an updated copy. This is because the way *mod_authn_otp* updates the file is by writing out a new version under a temporary name and then renaming the temporary file to the real one.
 
 For example, on [http://www.opensuse.org/ openSuSE Linux] this means the file and parent directory should be owned by user {{{wwwrun}}} and group {{{www}}}.
 
@@ -52,4 +54,3 @@ E betty         -       54fccc418a4d8acbddef6db4cc2f85ce99321d64
 == Locking ==
 
 *mod_authn_otp* creates a lock file in the same directory as the users file in order to synchronize server threads so they don't try to update the users file at the same time. The file is empty; it just needs to be there so it can be locked.
-
