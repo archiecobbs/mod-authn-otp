@@ -14,5 +14,4 @@ I will list compatible tokens here as people report them...
 
 === Software Tokens ===
 
-* [http://www.securethecloud.com/mobile-client-pledge/ Nordic Edge's Pledge] runs on the iPhone and others. Follow the instructions for a free profile, then enter the token key into your *mod_authn_otp* users file.
-
+  * [http://www.securethecloud.com/mobile-client-pledge/ Nordic Edge's Pledge] runs on the iPhone and others. Follow the instructions for a free profile, then enter the token key into your *mod_authn_otp* users file.
