@@ -1,20 +1,29 @@
 
 mod_authn_otp - Basic and digest authentication using one-time passwords
 
-mod_authn_otp adds support to Apache for two-factor authentication using
-a password consisting of an (optional) PIN number and a one-time password
-(OTP) generated using the HOTP algorithm defined in RFC 4226. This allows
-web site authentication via any RFC 4226-compliant token device.
+mod_authn_otp adds support to the Apache web server for two-factor
+authentication using a password consisting of an (optional) PIN number
+and a one-time password (OTP) generated using the algorithm defined
+in RFC 4226. This creates a simple way to protect a web site with
+two-factor authentication, using any RFC 4226-compliant hardware or
+software token device.
 
 mod_authn_otp supports both event and time based one-time passwords. It
 also supports "lingering" which allows the repeated re-use of a previously
 used one-time password up to a configurable maximum linger time. This
 allows one-time passwords to be used directly in HTTP authentication
-without forcing the user to enter a new OTP for every page load.
+without forcing the user to enter a new one-time password for every
+page load.
 
 mod_authn_otp supports both basic and digest authentication, and will
 auto-synchronize with the user's token within a configurable maximum
 offset (auto-synchronization is not supported with digest authentication).
+
+mod_authn_otp is especially useful for setting up protected web sites
+that require more security than simple username/password authentication
+yet also don't require users to install special VPN software on their
+machines or carry physical hardware tokens, as compatible software tokens
+that run on cell phones can be used instead.
 
 For configuration information and other details please see:
 
