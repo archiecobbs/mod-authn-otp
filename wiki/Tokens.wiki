@@ -3,7 +3,7 @@
 
 == Getting Tokens ==
 
-Any [http://www.ietf.org/rfc/rfc4226.txt RFC 4226] compatible one-time password generator should work with *mod_authn_otp*.
+Any [http://www.ietf.org/rfc/rfc4226.txt RFC 4226] compatible one-time password generator from which you can access the token key should work with *mod_authn_otp*.
 
 You will need a token that is not tied to a specific vendor by way of proprietary design or withholding of information. For example, [http://www.verisign.com/authentication/consumer-authentication/identity-protection/index.html Verisign's VIP] tokens are not compatible because it is not possible to extract the token's key.
 
@@ -15,4 +15,5 @@ I will list compatible tokens here as people report them...
 
 === Software Tokens ===
 
-  * [http://www.securethecloud.com/mobile-client-pledge/ Nordic Edge's Pledge] runs on the iPhone and others. Follow the instructions for a free profile, then enter the token key into your *mod_authn_otp* users file.
+  * [http://www.securethecloud.com/mobile-client-pledge/ Nordic Edge's Pledge] is an event based software token that runs on the iPhone and cell phones. Follow the instructions for a free profile, then enter the token key into your *mod_authn_otp* users file.
+
