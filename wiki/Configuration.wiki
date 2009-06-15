@@ -47,49 +47,41 @@ A detailed description of each directive follows.
 
 === OTPAuthUsersFile ===
 
-This directive configures the *users file* which is plain text file that functions as *mod_authn_otp*'s database. See the UsersFile wiki page for more information about its format.
+This directive configures the *users file* which is plain text file that functions as *mod_authn_otp*'s database.
 
 The system file permissions assigned to this file and its containing directory are important for proper operation. In order to function correctly, *mod_authn_otp* must be able to:
 * Create a new file in the same directory as the users file
-* Delete the users file
+* Delete (i.e., replace) the users file
 
-An example users file is included in the distribution and is reproduced here:
-{{{
-# Example users file for mod_authn_otp
-#
-# Fields:
-#
-# 1. Token Type         'E' for event based, 'T' for time based
-# 2. Username           User's username
-# 3. PIN                User's PIN prefix or "-" if user has no PIN
-# 4. Token Key          Secret key for the token algorithm (see RFC 4226)
-# 5. Counter/Offset     Next expected counter value (event tokens) or counter offset (time tokens)
-# 6. Last OTP           The previous successfully used one-time password
-# 7. Time of Last OTP   Local timestamp when the last OTP was generated (in the form 2009-06-12T17:52:32L)
-#
-# Fields 5 and beyond are optional. Fields 6 and beyond should be omitted for new users.
-#
-# For more info see: http://mod-authn-otp.googlecode.com/
-#
-
-E barney        1234    8a2d55707a9084982649dadc04b426a06df19ab2 21      820658  2009-06-12T17:52:32L
-E fred          5678    acbd18db4cc2f85cedef654fccc4a4d8bd537891 78      617363  2009-06-04T21:17:03L
-T joe           999999  ef654fccdef654fccc4a4d8acbd18db4cc2f85ce -2      883913  2009-06-04T21:17:03L
-
-# Wilma and better are new users. Note betty does not have a PIN so "-" is used instead as a placeholder
-
-E wilma         5678    a4d8acbddef654fccc418db4cc2f85cea6339f00
-E betty         -       54fccc418a4d8acbddef6db4cc2f85ce99321d64
-}}}
+See the UsersFile wiki page for more information about its format.
 
 === OTPAuthNumDigits ===
 
 This directive specifies how many digits are in a single one-time password. This is almost always six, but the specification allows for up to as many as ten digits.
 
+The default value for this directive is six.
+
 === OTPAuthTimeInterval ===
 
 Tokens come in two flavors: event based and time based. This directive applies to time based tokens only and it specifies how long a single time interval is. The standard value out there seems to be 30 seconds. Note that time based tokens simply will not work if they are using a different value than is configured here.
 
+The default value for this directive is 30 seconds.
+
 === OTPAuthMaxOffset ===
 
+For event based tokens, this is the maximum allowable number of "lost" one-time passwords before the next one-time password will fail to authenticate. The higher this value, the more likely the server will stay synchronized with the token even if you have users who get bored and generate one-time passwords just for fun and then throw them away. On the other hand, the amount of computation the server performs when an incorrect one-time password is used increases linearly with this number (note if the PIN is incorrect, we never get that far, so there's no denial of service attack without knowing at least the PIN).
+
+For time based tokens, this is the maximum number of time intervals (default 30 seconds, see above) that the server will search before and after the current time interval for a matching one-time password. The performance implications are similar as with event based tokens.
+
+The default value for this directive is 4.
+
+See OneTimePasswords for more details about synchronization.
+
 === OTPAuthMaxLinger ===
+
+This defines the maximum "linger time" during which a previously entered one-time password will remain valid. The linger time allows browsing without requiring HTTP authentication on each page, image, etc. load.
+
+The default value for this directive is 600 seconds, i.e., ten minutes. This is probably too low for extensive browsing (forcing your users to enter a password every ten minutes may be annoying).
+
+See OneTimePasswords for more details about why a linger time is required for HTTP authentication.
+ 
