@@ -28,7 +28,7 @@ module: mod_authn_otp.c
 install-exec-local: module
 		$(APXS) -S LIBEXECDIR="$(DESTDIR)`$(APXS) -q LIBEXECDIR`" -i mod_authn_otp.la
 
-CLEANFILES=         *.la *.lo *.o *.so *.slo .lib/*
+CLEANFILES=         *.la *.lo *.o *.so *.slo .libs/*
 
 EXTRA_DIST=         CHANGES LICENSE mod_authn_otp.c users.sample
 
