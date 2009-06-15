@@ -1,4 +1,5 @@
 #summary Getting tokens for use with mod_authn_otp
+#labels Featured
 
 == Getting Tokens ==
 
