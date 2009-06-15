@@ -10,6 +10,11 @@ This has several negative implications for *mod_authn_otp* which make digest aut
 
 *A better solution than digest authentication is to use basic authentication with SSL encryption.*
 
+If you really want to use digest authentication (e.g., SSL is not an option), the following is recommended:
+  * Use time based software tokens running on a cell phone that automatically synchronizes its clock with the cell network.
+  * Configure the network time protocol (NTP) on your server so its clock stays accurate.
+  * Encourage your users to only use "fresh" one-time passwords as soon as possible after they appear on the token.
+
 == Brittleness ==
 
 The first negative result is that the client and server counter values must match _exactly_ on the first try for authentication to succeed. In other words, there is no way for the server to "search" for the correct counter value.
@@ -32,11 +37,7 @@ Another reason *digest authentication with event-based tokens is not recommended
 
 == Auto-Synchronization ==
 
-Because the server never actually sees the one-time password the user entered, it can't auto-synchronize.
-
-For time based tokens, this simply means that if the token and server clocks are sufficiently out of sync, authentication will consistently fail. You can manually adjust for this by editing the users file and editing the offset field, but this requires you knowing what the right correction value it. It also means that if there is an appreciable delay between the time the user generates the one-time password and the time they send it to the server, authentication can fail.
-
-Therefore, auto-synchronization simply doesn't work with digest authentication.
+Because the server never actually sees the one-time password the user entered, it can't auto-synchronize. Therefore, auto-synchronization simply doesn't work with digest authentication.
 
 Manual synchronization is still possible, of course. This would mean editing the users file and setting the offset field directly. However, for many tokens it's difficult or impossible to retrieve the current counter value, so you'd essentially be guessing.
 
