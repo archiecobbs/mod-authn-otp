@@ -1,4 +1,5 @@
 #summary How to configure the Apache 2.x server
+#labels Featured
 
 == Overview ==
 
