@@ -37,7 +37,7 @@ Next, sprinkle in whatever additional usual Apache configuration directives you 
 Finally, configure the *mod_authn_otp* specific directives:
 
 || *Directive* || *Type* || *Default* || *Required?* || *Description* ||
-|| *OTPAuthUsersFile* || File ||  _N/A_  || Yes || Specifies the users file containing user and token information ||
+|| *OTPAuthUsersFile* || File ||  _N/A_  || Yes || Specifies the users file containing user, PIN, and token information ||
 || *OTPAuthNumDigits* || Number || 6 || No || How many digits are in generated one-time passwords (not including PIN prefix) ||
 || *OTPAuthTimeInterval* || Number || 30 || No || The length in seconds of one time interval for time-based tokens ||
 || *OTPAuthMaxOffset* || Number || 4 || No || Maximum allowed offset from the expected token counter value ||
@@ -49,11 +49,9 @@ A detailed description of each directive follows.
 
 This directive configures the *users file* which is plain text file that functions as *mod_authn_otp*'s database.
 
-The system file permissions assigned to this file and its containing directory are important for proper operation. In order to function correctly, *mod_authn_otp* must be able to:
-* Create a new file in the same directory as the users file
-* Delete (i.e., replace) the users file
+The system file permissions assigned to this file and its containing directory are important for proper operation. In order to function correctly, the Apache server must have permission to create files in the same directory as this file, and to delete (overwrite) this file with an updated copy. 
 
-See the UsersFile wiki page for more information about its format.
+See the UsersFile wiki page for more information about its format and required permissions.
 
 === OTPAuthNumDigits ===
 
