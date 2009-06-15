@@ -1,7 +1,7 @@
 #summary Getting tokens for use with mod_authn_otp
 #labels Featured
 
-== Getting Tokens ==
+== Supported Tokens ==
 
 Any [http://www.ietf.org/rfc/rfc4226.txt RFC 4226] compatible one-time password generator from which you can access the token key should work with *mod_authn_otp*.
 
