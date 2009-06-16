@@ -28,7 +28,15 @@ module: mod_authn_otp.c
 install-exec-local: module
 		$(APXS) -S LIBEXECDIR="$(DESTDIR)`$(APXS) -q LIBEXECDIR`" -i mod_authn_otp.la
 
+bin_PROGRAMS=       otptool
+
+noinst_HEADERS=     otptool.h
+
+man_MANS=           otptool.1
+
+otptool_SOURCES=    otptool.c genotp.c
+
 CLEANFILES=         *.la *.lo *.o *.so *.slo .libs/*
 
-EXTRA_DIST=         CHANGES LICENSE mod_authn_otp.c users.sample
+EXTRA_DIST=         CHANGES LICENSE mod_authn_otp.c users.sample otptool.1
 
