@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# mod_authn_otp - Basic and digest authentication using one-time passwords
+# mod_authn_otp - Apache module for one-time password authentication
 #
 # Copyright 2009 Archie L. Cobbs <archie@dellroad.org>
 #
