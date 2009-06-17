@@ -24,7 +24,10 @@ If it's not already obvious, because it contains sensitive security information 
 
 An example users file is included in the distribution and is reproduced here:
 {{{
+#
 # Example users file for mod_authn_otp
+#
+# Blank lines and lines starting with '#' are ignored. Fields are whitespace-separated.
 #
 # Fields:
 #
@@ -38,14 +41,16 @@ An example users file is included in the distribution and is reproduced here:
 #
 # Fields 5 and beyond are optional. Fields 6 and beyond should be omitted for new users.
 #
-# For more info see: http://mod-authn-otp.googlecode.com/
+# For more info see: http://code.google.com/p/mod-authn-otp/wiki/UsersFile
 #
+
+# Some users who have logged in at least once.
 
 E barney        1234    8a2d55707a9084982649dadc04b426a06df19ab2 21      820658  2009-06-12T17:52:32L
 E fred          5678    acbd18db4cc2f85cedef654fccc4a4d8bd537891 78      617363  2009-06-04T21:17:03L
 T joe           999999  ef654fccdef654fccc4a4d8acbd18db4cc2f85ce -2      883913  2009-06-04T21:17:03L
 
-# Wilma and better are new users. Note betty does not have a PIN so "-" is used instead as a placeholder
+# Wilma and Betty are new users. Note betty does not have a PIN so "-" is used instead as a placeholder
 
 E wilma         5678    a4d8acbddef654fccc418db4cc2f85cea6339f00
 E betty         -       54fccc418a4d8acbddef6db4cc2f85ce99321d64
@@ -54,3 +59,4 @@ E betty         -       54fccc418a4d8acbddef6db4cc2f85ce99321d64
 == Locking ==
 
 *mod_authn_otp* creates a lock file in the same directory as the users file in order to synchronize server threads so they don't try to update the users file at the same time. The file is empty; it just needs to be there so it can be locked.
+
