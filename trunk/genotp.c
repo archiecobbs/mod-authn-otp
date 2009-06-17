@@ -1,6 +1,6 @@
 
 /*
- * otptool - one-time password utility
+ * otptool - HOTP/OATH one-time password utility
  *
  * Copyright 2009 Archie L. Cobbs <archie@dellroad.org>
  *
