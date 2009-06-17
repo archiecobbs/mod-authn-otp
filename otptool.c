@@ -30,7 +30,8 @@ main(int argc, char **argv)
     const char *otp = NULL;
     const char *key = NULL;
     unsigned char keybuf[128];
-    char otpbuf[128];
+    char otpbuf10[32];
+    char otpbuf16[32];
     size_t keylen;
     int time_interval = DEFAULT_TIME_INTERVAL;
     int ndigits = -1;
@@ -40,12 +41,11 @@ main(int argc, char **argv)
     int counter = -1;
     int use_time = 0;
     int window = 0;
-    int hex = 0;
     int ch;
     int i;
 
     /* Parse command line */
-    while ((ch = getopt(argc, argv, "c:d:hi:ftvw:x")) != -1) {
+    while ((ch = getopt(argc, argv, "c:d:hi:ftvw:")) != -1) {
         switch (ch) {
         case 'c':
             if (use_time)
@@ -78,9 +78,6 @@ main(int argc, char **argv)
             if (window < 0)
                 errx(EXIT_USAGE_ERROR, "invalid counter window `%s'", optarg);
             break;
-        case 'x':
-            hex = 1;
-            break;
         default:
             warnx("unrecognized flag `-%c'", ch);
             usage();
@@ -105,6 +102,10 @@ main(int argc, char **argv)
         usage();
         return EXIT_USAGE_ERROR;
     }
+
+    /* Set default #digits */
+    if (ndigits == -1)
+        ndigits = DEFAULT_NUM_DIGITS;
 
     /* Read or parse key */
     if (read_from_file) {
@@ -151,18 +152,18 @@ main(int argc, char **argv)
             counter_stop = counter + window;
         }
         for (counter = counter_start; counter <= counter_stop; counter++) {
-            genotp(keybuf, keylen, counter, ndigits, hex, otpbuf, sizeof(otpbuf));
-            printf("%d: %s\n", counter, otpbuf);
+            genotp(keybuf, keylen, counter, ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
+            printf("%d: %s %s\n", counter, otpbuf10, otpbuf16);
         }
         return 0;
     } else {
         for (i = 0; i <= window; i++) {
-            genotp(keybuf, keylen, counter + i, ndigits, hex, otpbuf, sizeof(otpbuf));
-            if (strcasecmp(otp, otpbuf) == 0)
+            genotp(keybuf, keylen, counter + i, ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
+            if (strcasecmp(otp, otpbuf10) == 0 || strcasecmp(otp, otpbuf16) == 0)
                 goto match;
             if (use_time && i != 0) {
-                genotp(keybuf, keylen, counter - i, ndigits, hex, otpbuf, sizeof(otpbuf));
-                if (strcasecmp(otp, otpbuf) == 0)
+                genotp(keybuf, keylen, counter - i, ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
+                if (strcasecmp(otp, otpbuf10) == 0 || strcasecmp(otp, otpbuf16) == 0)
                     goto match;
             }
             continue;
@@ -181,7 +182,7 @@ match:
 static void
 usage()
 {
-    fprintf(stderr, "Usage: %s [-fhtx] [-c counter] [-d digits] [-i interval] [-w window] key [otp]\n", PROG_NAME);
+    fprintf(stderr, "Usage: %s [-fht] [-c counter] [-d digits] [-i interval] [-w window] key [otp]\n", PROG_NAME);
     fprintf(stderr, "Options:\n");
     fprintf(stderr, "  -c\tSpecify the initial counter value (conflicts with `-t')\n");
     fprintf(stderr, "  -f\t`key' refers to the file containing the key\n");
@@ -190,6 +191,5 @@ usage()
     fprintf(stderr, "  -w\tSpecify size of window for additional counter values (default %d)\n", DEFAULT_WINDOW);
     fprintf(stderr, "  -t\tDerive initial counter value from the current time (conflicts with `-c')\n");
     fprintf(stderr, "  -n\tSpecify number of digits in the generated OTP(s) (default %d)\n", DEFAULT_NUM_DIGITS);
-    fprintf(stderr, "  -x\tUse hexadecimal OTPs\n");
 }
 

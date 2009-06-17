@@ -84,7 +84,7 @@ struct otp_user {
 
 /* Internal functions */
 static authn_status find_update_user(request_rec *r, const char *usersfile, struct otp_user *const user, int update);
-static void         genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf, size_t buflen);
+static void         genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen);
 static void         print_user(apr_file_t *file, const struct otp_user *user);
 static authn_status authn_otp_check_password(request_rec *r, const char *username, const char *password);
 static authn_status authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm, char **rethash);
@@ -256,6 +256,9 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
 
 found:
         /* We are not updating; return the user we found */
+        AP_DEBUG_ASSERT(!update);
+        AP_DEBUG_ASSERT(newfile == NULL);
+        AP_DEBUG_ASSERT(lockfile == NULL);
         apr_file_close(file);
         return AUTH_USER_FOUND;
 
@@ -327,7 +330,7 @@ print_user(apr_file_t *file, const struct otp_user *user)
  * Generate an OTP using the algorithm specified in RFC 4226,
  */
 static void
-genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf, size_t buflen)
+genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen)
 {
     const EVP_MD *sha1_md = EVP_sha1();
     u_char hash[EVP_MAX_MD_SIZE];
@@ -351,15 +354,17 @@ genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf,
     value = ((hash[offset] & 0x7f) << 24) | ((hash[offset + 1] & 0xff) << 16)
         | ((hash[offset + 2] & 0xff) << 8) | (hash[offset + 3] & 0xff);
 
-    /* Get desired number of decimal digits */
+    /* Sanity check max # digits */
     if (ndigits < 1)
         ndigits = 1;
-    else if (ndigits >= sizeof(powers10) / sizeof(*powers10))
-        ndigits = sizeof(powers10) / sizeof(*powers10) - 1;
 
-    /* Print value */
-    value %= powers10[ndigits];
-    apr_snprintf(buf, buflen, "%0*d", ndigits, value);
+    /* Generate hexadecimal digits */
+    apr_snprintf(buf16, buflen, "%0*x", ndigits, ndigits < 8 ? (value & ((1 << (4 * ndigits)) - 1)) : value);
+
+    /* Generate decimal digits */
+    if (ndigits >= sizeof(powers10) / sizeof(*powers10))
+        ndigits = sizeof(powers10) / sizeof(*powers10) - 1;
+    apr_snprintf(buf10, buflen, "%0*d", ndigits, value % powers10[ndigits]);
 }
 
 /*
@@ -375,7 +380,8 @@ authn_otp_check_password(request_rec *r, const char *username, const char *passw
     authn_status status;
     int window_start;
     int window_stop;
-    char otpbuf[32];
+    char otpbuf10[32];
+    char otpbuf16[32];
     int counter;
     int offset;
     time_t now;
@@ -432,8 +438,8 @@ authn_otp_check_password(request_rec *r, const char *username, const char *passw
     }
 
     /* Test OTP using expected counter first */
-    genotp(user->key, user->keylen, counter, conf->ndigits, otpbuf, sizeof(otpbuf));
-    if (strcmp(otp_given, otpbuf) == 0) {
+    genotp(user->key, user->keylen, counter, conf->ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
+    if (strcmp(otp_given, otpbuf10) == 0 || strcasecmp(otp_given, otpbuf16) == 0) {
         ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "accepting OTP for \"%s\" at counter %d", user->username, counter);
         offset = 0;
         goto success;
@@ -443,8 +449,8 @@ authn_otp_check_password(request_rec *r, const char *username, const char *passw
     for (offset = window_start; offset <= window_stop; offset++) {
         if (offset == 0)    /* already tried it */
             continue;
-        genotp(user->key, user->keylen, counter + offset, conf->ndigits, otpbuf, sizeof(otpbuf));
-        if (strcmp(otp_given, otpbuf) == 0) {
+        genotp(user->key, user->keylen, counter + offset, conf->ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
+        if (strcmp(otp_given, otpbuf10) == 0 || strcasecmp(otp_given, otpbuf16) == 0) {
             ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "accepting OTP for \"%s\" at counter %d (offset %d)",
               user->username, counter + offset, offset);
             goto success;
@@ -492,7 +498,8 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
     struct otp_user userbuf;
     struct otp_user *const user = &userbuf;
     authn_status status;
-    char otpbuf[32];
+    char otpbuf10[32];
+    char otpbuf16[32];
     char hashbuf[1024];
     int counter;
     int linger;
@@ -516,7 +523,7 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
         ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r,
           "generating digest hash for \"%s\" assuming reuse of OTP within %d sec. linger time",
           user->username, conf->max_linger);
-        apr_snprintf(otpbuf, sizeof(otpbuf), "%s", user->last_otp);
+        apr_snprintf(otpbuf10, sizeof(otpbuf10), "%s", user->last_otp);     /* assuming decimal here! */
         linger = 1;
     } else {
 
@@ -542,17 +549,17 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
         /* Generate OTP using expected counter */
         ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "generating digest hash for \"%s\" assuming OTP counter %d",
           user->username, counter);
-        genotp(user->key, user->keylen, counter, conf->ndigits, otpbuf, sizeof(otpbuf));
+        genotp(user->key, user->keylen, counter, conf->ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
         linger = 0;
     }
 
     /* Generate digest hash */
-    apr_snprintf(hashbuf, sizeof(hashbuf), "%s:%s:%s%s", user->username, realm, user->pin, otpbuf);
+    apr_snprintf(hashbuf, sizeof(hashbuf), "%s:%s:%s%s", user->username, realm, user->pin, otpbuf10);
     *rethash = ap_md5(r->pool, (void *)hashbuf);
 
 #if 0
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "OTP=\"%s\" counter=%d user=\"%s\" realm=\"%s\" pin=\"%s\" digest=\"%s\"",
-      otpbuf, counter, user->username, realm, user->pin, *rethash);
+      otpbuf10, counter, user->username, realm, user->pin, *rethash);
 #endif
 
     /* If we are past the previous linger time, assume counter advance and update user's info */
@@ -564,7 +571,7 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
         default:
             break;
         }
-        apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", otpbuf);
+        apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", otpbuf10);   /* assuming decimal here! */
         user->last_auth = now;
         find_update_user(r, conf->users_file, user, 1);
     }

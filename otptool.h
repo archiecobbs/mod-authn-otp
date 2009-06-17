@@ -44,5 +44,5 @@
 #define DEFAULT_WINDOW              0
 
 /* genotp.c */
-extern void         genotp(const unsigned char *key, size_t keylen, u_long counter, int ndigits, int hex, char *buf, size_t buflen);
+extern void         genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen);
 

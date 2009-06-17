@@ -27,7 +27,7 @@
 .Sh SYNOPSIS
 .Nm otptool
 .Bk -words
-.Op Fl fhtx
+.Op Fl fht
 .Op Fl c Ar counter
 .Op Fl d Ar ndig
 .Op Fl i Ar secs
@@ -54,6 +54,7 @@ verifies that
 is the correct one-time password for the given
 .Ar key
 and counter value.
+Either decimal or hexadecimal forms are accepted.
 .Pp
 The key is specified as a hexadecimal value.
 The counter value is determined as follows: if the
@@ -101,8 +102,6 @@ When
 .Fl t
 is used, the window extends the given distance both before and after the target counter value;
 otherwise, the window extends forward of the target counter value.
-.It Fl x
-Use hexadecimal encoding for the one-time password instead of decimal.
 .El
 .Sh SEE ALSO
 .Rs
