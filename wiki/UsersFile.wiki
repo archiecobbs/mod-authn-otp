@@ -18,7 +18,7 @@ The Apache web server must have permission to create files in the same directory
 
 For example, on [http://www.opensuse.org/ openSuSE Linux] this means the file and parent directory should be owned by user {{{wwwrun}}} and group {{{www}}}.
 
-If it's not already obvious, because it contains sensitive security information *never put this file where it could be publicly visible*. For example, it should probably be in a directory whose parent directory is only readable by root.
+If it's not already obvious, because it contains sensitive security information *never put this file where it could be publicly visible*. For example, it should probably be in a directory that is only readable by the Apache process.
 
 == Format ==
 
