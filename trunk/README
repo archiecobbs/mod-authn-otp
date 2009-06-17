@@ -1,12 +1,11 @@
 
-mod_authn_otp - Basic and digest authentication using one-time passwords
+mod_authn_otp - Apache module for one-time password authentication
 
-mod_authn_otp adds support to the Apache web server for two-factor
-authentication using a password consisting of an (optional) PIN number
-and a one-time password (OTP) generated using the algorithm defined
-in RFC 4226. This creates a simple way to protect a web site with
-two-factor authentication, using any RFC 4226-compliant hardware or
-software token device.
+mod_authn_otp is an Apache web server module for two-factor authentication
+using one-time passwords (OTP) generated via the OAUTH/HOTP algorithm
+defined in RFC 4226. This creates a simple way to protect a web site with
+one-time passwords, using any RFC 4226-compliant hardware or software
+token device.
 
 mod_authn_otp supports both event and time based one-time passwords. It
 also supports "lingering" which allows the repeated re-use of a previously
