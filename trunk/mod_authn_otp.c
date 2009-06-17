@@ -94,7 +94,7 @@ static struct       otp_config *get_config(request_rec *r);
 static void         register_hooks(apr_pool_t *p);
 
 /* Powers of ten */
-static const int    powers10[] = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 1000000000 };
+static const int    powers10[] = { 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 1000000000 };
 
 /*
  * Find/update a user in the users file.
@@ -332,6 +332,8 @@ print_user(apr_file_t *file, const struct otp_user *user)
 static void
 genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen)
 {
+    const int max10 = sizeof(powers10) / sizeof(*powers10);
+    const int max16 = 8;
     const EVP_MD *sha1_md = EVP_sha1();
     u_char hash[EVP_MAX_MD_SIZE];
     u_int hash_len;
@@ -358,13 +360,13 @@ genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf1
     if (ndigits < 1)
         ndigits = 1;
 
-    /* Generate hexadecimal digits */
-    apr_snprintf(buf16, buflen, "%0*x", ndigits, ndigits < 8 ? (value & ((1 << (4 * ndigits)) - 1)) : value);
-
     /* Generate decimal digits */
-    if (ndigits >= sizeof(powers10) / sizeof(*powers10))
-        ndigits = sizeof(powers10) / sizeof(*powers10) - 1;
-    apr_snprintf(buf10, buflen, "%0*d", ndigits, value % powers10[ndigits]);
+    apr_snprintf(buf10, buflen, "%0*d", ndigits < max10 ? ndigits : max10,
+      ndigits < max10 ? value % powers10[ndigits - 1] : value);
+
+    /* Generate hexadecimal digits */
+    apr_snprintf(buf16, buflen, "%0*x", ndigits < max16 ? ndigits : max16,
+      ndigits < max16 ? (value & ((1 << (4 * ndigits)) - 1)) : value);
 }
 
 /*

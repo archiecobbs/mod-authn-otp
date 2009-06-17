@@ -22,7 +22,7 @@
 #include "otptool.h"
 
 /* Powers of ten */
-static const int    powers10[] = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 1000000000 };
+static const int    powers10[] = { 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 1000000000 };
 
 /*
  * Generate an OTP using the algorithm specified in RFC 4226,
@@ -30,6 +30,8 @@ static const int    powers10[] = { 1, 10, 100, 1000, 10000, 100000, 1000000, 100
 void
 genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen)
 {
+    const int max10 = sizeof(powers10) / sizeof(*powers10);
+    const int max16 = 8;
     const EVP_MD *sha1_md = EVP_sha1();
     u_char hash[EVP_MAX_MD_SIZE];
     u_int hash_len;
@@ -56,12 +58,12 @@ genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf1
     if (ndigits < 1)
         ndigits = 1;
 
-    /* Generate hexadecimal digits */
-    snprintf(buf16, buflen, "%0*x", ndigits, ndigits < 8 ? (value & ((1 << (4 * ndigits)) - 1)) : value);
-
     /* Generate decimal digits */
-    if (ndigits >= sizeof(powers10) / sizeof(*powers10))
-        ndigits = sizeof(powers10) / sizeof(*powers10) - 1;
-    snprintf(buf10, buflen, "%0*d", ndigits, value % powers10[ndigits]);
+    snprintf(buf10, buflen, "%0*d", ndigits < max10 ? ndigits : max10,
+      ndigits < max10 ? value % powers10[ndigits - 1] : value);
+
+    /* Generate hexadecimal digits */
+    snprintf(buf16, buflen, "%0*x", ndigits < max16 ? ndigits : max16,
+      ndigits < max16 ? (value & ((1 << (4 * ndigits)) - 1)) : value);
 }
 
