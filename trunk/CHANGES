@@ -2,8 +2,10 @@
 Version 1.0.1
 
     - Added otptool(1) one-time password utility program.
+    - Accept either decimal or hexadecimal values (basic auth only).
 
 Version 1.0.0 (r10) released 14 Jun 2009
 
     - Initial release
 
+$Id$
