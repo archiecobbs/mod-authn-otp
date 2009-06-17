@@ -21,9 +21,8 @@ offset (auto-synchronization is not supported with digest authentication).
 
 mod_authn_otp is especially useful for setting up protected web sites
 that require more security than simple username/password authentication
-yet also don't require users to install special VPN software on their
-machines or carry physical hardware tokens, as compatible software tokens
-that run on cell phones can be used instead.
+yet also don't require users to install special VPN software, and is
+compatible with software tokens that run on cell phones.
 
 For configuration information and other details please see:
 
