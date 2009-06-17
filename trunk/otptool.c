@@ -92,7 +92,7 @@ main(int argc, char **argv)
         if (ndigits == -1)
             ndigits = strlen(otp);
         if (strlen(otp) != ndigits)
-            errx(EXIT_NOT_MATCHED, "the given OTP `%s' has the wrong length %d != %d", optarg, strlen(otp), ndigits);
+            errx(EXIT_NOT_MATCHED, "the given OTP `%s' has the wrong length %d != %d", optarg, (int)strlen(otp), ndigits);
         // FALLTHROUGH
     case 1:
         key = argv[optind];

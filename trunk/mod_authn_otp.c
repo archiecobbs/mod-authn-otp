@@ -408,7 +408,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *passw
     /* Check OTP length */
     if (strlen(otp_given) != conf->ndigits) {
         ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" OTP has the wrong length %d != %d",
-          user->username, strlen(otp_given), conf->ndigits);
+          user->username, (int)strlen(otp_given), conf->ndigits);
         return AUTH_DENIED;
     }
 
