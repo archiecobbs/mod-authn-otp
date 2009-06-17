@@ -35,8 +35,8 @@
 
 /* Error exit values */
 #define EXIT_USAGE_ERROR            1           /* Incorrect command line usage */
-#define EXIT_SYSTEM_ERROR           2           /* Could not open file, etc. */
-#define EXIT_NOT_MATCHED            3           /* OTP failed to match */
+#define EXIT_NOT_MATCHED            2           /* OTP failed to match */
+#define EXIT_SYSTEM_ERROR           3           /* Could not open file, etc. */
 
 /* Default settings */
 #define DEFAULT_NUM_DIGITS          6

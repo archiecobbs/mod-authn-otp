@@ -92,7 +92,7 @@ main(int argc, char **argv)
         if (ndigits == -1)
             ndigits = strlen(otp);
         if (strlen(otp) != ndigits)
-            errx(EXIT_NOT_MATCHED, "the given OTP `%s' has the wrong length %d != %d", optarg, (int)strlen(otp), ndigits);
+            errx(EXIT_NOT_MATCHED, "the given OTP `%s' has the wrong length %d != %d", otp, (int)strlen(otp), ndigits);
         // FALLTHROUGH
     case 1:
         key = argv[optind];
@@ -158,23 +158,27 @@ main(int argc, char **argv)
         return 0;
     } else {
         for (i = 0; i <= window; i++) {
-            genotp(keybuf, keylen, counter + i, ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
+            int try;
+
+            try = counter + i;
+            genotp(keybuf, keylen, try, ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
             if (strcasecmp(otp, otpbuf10) == 0 || strcasecmp(otp, otpbuf16) == 0)
                 goto match;
             if (use_time && i != 0) {
-                genotp(keybuf, keylen, counter - i, ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
+                try = counter - i;
+                genotp(keybuf, keylen, try, ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
                 if (strcasecmp(otp, otpbuf10) == 0 || strcasecmp(otp, otpbuf16) == 0)
                     goto match;
             }
             continue;
 match:
-            printf("COUNTER=%d\n", i);
+            printf("%d\n", try);
             return 0;
         }
     }
 
     /* Not found */
-    printf("One-time password \"%s\" not found within the counter range %d ... %d\n", otp,
+    fprintf(stderr, "one-time password \"%s\" was not found within the counter range %d ... %d\n", otp,
       use_time ? counter - window : counter, counter + window);
     return EXIT_NOT_MATCHED;
 }
