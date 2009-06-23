@@ -29,6 +29,7 @@
 
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/md5.h>
 
 /* Program name */
 #define PROG_NAME                   "otptool"
@@ -44,5 +45,11 @@
 #define DEFAULT_WINDOW              0
 
 /* genotp.c */
-extern void         genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen);
+extern void         hotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen);
+
+/* motp.c */
+extern void         motp(const u_char *key, size_t keylen, const char *pin, u_long counter, int ndigits, char *buf, size_t buflen);
+
+/* phex.c */
+extern void         printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digits);
 

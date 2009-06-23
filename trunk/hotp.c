@@ -28,7 +28,7 @@ static const int    powers10[] = { 10, 100, 1000, 10000, 100000, 1000000, 100000
  * Generate an OTP using the algorithm specified in RFC 4226,
  */
 void
-genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen)
+hotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen)
 {
     const int max10 = sizeof(powers10) / sizeof(*powers10);
     const int max16 = 8;
@@ -59,11 +59,15 @@ genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf1
         ndigits = 1;
 
     /* Generate decimal digits */
-    snprintf(buf10, buflen, "%0*d", ndigits < max10 ? ndigits : max10,
-      ndigits < max10 ? value % powers10[ndigits - 1] : value);
+    if (buf10 != NULL) {
+        snprintf(buf10, buflen, "%0*d", ndigits < max10 ? ndigits : max10,
+          ndigits < max10 ? value % powers10[ndigits - 1] : value);
+    }
 
     /* Generate hexadecimal digits */
-    snprintf(buf16, buflen, "%0*x", ndigits < max16 ? ndigits : max16,
-      ndigits < max16 ? (value & ((1 << (4 * ndigits)) - 1)) : value);
+    if (buf16 != NULL) {
+        snprintf(buf16, buflen, "%0*x", ndigits < max16 ? ndigits : max16,
+          ndigits < max16 ? (value & ((1 << (4 * ndigits)) - 1)) : value);
+    }
 }
 

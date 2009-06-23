@@ -1,6 +1,9 @@
 
-Version 1.0.1
+Version 1.1.0
 
+    - Moved time interval and #digits configuration into users file
+    - Fixed bug in time based token synchronization at large offsets
+    - Added support for the Mobile-OTP algorithm: http://motp.sourceforge.net/
     - Added otptool(1) one-time password utility program.
     - Accept either decimal or hexadecimal values (basic auth only).
 

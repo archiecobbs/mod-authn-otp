@@ -34,7 +34,7 @@ noinst_HEADERS=     otptool.h
 
 man_MANS=           otptool.1
 
-otptool_SOURCES=    otptool.c genotp.c
+otptool_SOURCES=    otptool.c hotp.c motp.c phex.c
 
 CLEANFILES=         *.la *.lo *.o *.so *.slo .libs/*
 

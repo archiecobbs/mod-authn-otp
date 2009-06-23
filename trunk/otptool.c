@@ -21,6 +21,9 @@
 
 #include "otptool.h"
 
+/* Definitions */
+#define OTP_BUF_SIZE       16
+
 /* Internal functions */
 static void         usage(void);
 
@@ -29,9 +32,10 @@ main(int argc, char **argv)
 {
     const char *otp = NULL;
     const char *key = NULL;
+    const char *motp_pin = NULL;
     unsigned char keybuf[128];
-    char otpbuf10[32];
-    char otpbuf16[32];
+    char otpbuf10[OTP_BUF_SIZE];
+    char otpbuf16[OTP_BUF_SIZE];
     size_t keylen;
     int time_interval = DEFAULT_TIME_INTERVAL;
     int ndigits = -1;
@@ -45,7 +49,7 @@ main(int argc, char **argv)
     int i;
 
     /* Parse command line */
-    while ((ch = getopt(argc, argv, "c:d:hi:ftvw:")) != -1) {
+    while ((ch = getopt(argc, argv, "c:d:fhi:m:tvw:")) != -1) {
         switch (ch) {
         case 'c':
             if (use_time)
@@ -67,6 +71,12 @@ main(int argc, char **argv)
             return 0;
         case 'i':
             time_interval = atoi(optarg);
+            break;
+        case 'm':
+            ndigits = 6;
+            time_interval = 10;
+            motp_pin = optarg;
+            *otpbuf10 = '\0';
             break;
         case 't':
             if (counter != -1)
@@ -152,8 +162,11 @@ main(int argc, char **argv)
             counter_stop = counter + window;
         }
         for (counter = counter_start; counter <= counter_stop; counter++) {
-            genotp(keybuf, keylen, counter, ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
-            printf("%d: %s %s\n", counter, otpbuf10, otpbuf16);
+            if (motp_pin != NULL)
+                motp(keybuf, keylen, motp_pin, counter, ndigits, otpbuf16, OTP_BUF_SIZE);
+            else
+                hotp(keybuf, keylen, counter, ndigits, otpbuf10, otpbuf16, OTP_BUF_SIZE);
+            printf("%d: %s%s%s\n", counter, otpbuf10, *otpbuf10 != '\0' && *otpbuf16 != '\0' ? " " : "", otpbuf16);
         }
         return 0;
     } else {
@@ -161,12 +174,18 @@ main(int argc, char **argv)
             int try;
 
             try = counter + i;
-            genotp(keybuf, keylen, try, ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
+            if (motp_pin != NULL)
+                motp(keybuf, keylen, motp_pin, try, ndigits, otpbuf16, OTP_BUF_SIZE);
+            else
+                hotp(keybuf, keylen, try, ndigits, otpbuf10, otpbuf16, OTP_BUF_SIZE);
             if (strcasecmp(otp, otpbuf10) == 0 || strcasecmp(otp, otpbuf16) == 0)
                 goto match;
             if (use_time && i != 0) {
                 try = counter - i;
-                genotp(keybuf, keylen, try, ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
+                if (motp_pin != NULL)
+                    motp(keybuf, keylen, motp_pin, try, ndigits, otpbuf16, OTP_BUF_SIZE);
+                else
+                    hotp(keybuf, keylen, try, ndigits, otpbuf10, otpbuf16, OTP_BUF_SIZE);
                 if (strcasecmp(otp, otpbuf10) == 0 || strcasecmp(otp, otpbuf16) == 0)
                     goto match;
             }
@@ -186,14 +205,15 @@ match:
 static void
 usage()
 {
-    fprintf(stderr, "Usage: %s [-fht] [-c counter] [-d digits] [-i interval] [-w window] key [otp]\n", PROG_NAME);
+    fprintf(stderr, "Usage: %s [-fht] [-c counter] [-d digits] [-i interval] [-m PIN] [-w window] key [otp]\n", PROG_NAME);
     fprintf(stderr, "Options:\n");
     fprintf(stderr, "  -c\tSpecify the initial counter value (conflicts with `-t')\n");
     fprintf(stderr, "  -f\t`key' refers to the file containing the key\n");
     fprintf(stderr, "  -h\tDisplay this usage message\n");
     fprintf(stderr, "  -i\tSpecify time interval in seconds (default %d)\n", DEFAULT_TIME_INTERVAL);
-    fprintf(stderr, "  -w\tSpecify size of window for additional counter values (default %d)\n", DEFAULT_WINDOW);
+    fprintf(stderr, "  -m\tUse mOTP algorithm with given PIN; also implies `-d 6' and `-i 10'\n");
     fprintf(stderr, "  -t\tDerive initial counter value from the current time (conflicts with `-c')\n");
     fprintf(stderr, "  -n\tSpecify number of digits in the generated OTP(s) (default %d)\n", DEFAULT_NUM_DIGITS);
+    fprintf(stderr, "  -w\tSpecify size of window for additional counter values (default %d)\n", DEFAULT_WINDOW);
 }
 
