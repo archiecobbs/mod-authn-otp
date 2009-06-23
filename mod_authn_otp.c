@@ -169,7 +169,7 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
         struct otp_user tokinfo;
 
         /* Save a copy of the line */
-        snprintf(linecopy, sizeof(linecopy), "%s", linebuf);
+        apr_snprintf(linecopy, sizeof(linecopy), "%s", linebuf);
 
         /* Ignore lines starting with '#' and empty lines */
         if (*linebuf == '#')
@@ -306,8 +306,8 @@ fail:
     if (file != NULL)
         apr_file_close(file);
     if (newfile != NULL) {
-        (void)apr_file_remove(newusersfile, r->pool);
         apr_file_close(newfile);
+        (void)apr_file_remove(newusersfile, r->pool);
     }
     if (lockfile != NULL)
         apr_file_close(lockfile);
@@ -334,7 +334,7 @@ parse_token_type(const char *type, struct otp_user *tokinfo)
 
     /* Initialize */
     memset(tokinfo, 0, sizeof(*tokinfo));
-    snprintf(tokbuf, sizeof(tokbuf), "%s", type);
+    apr_snprintf(tokbuf, sizeof(tokbuf), "%s", type);
 
     /* Parse algorithm */
     if ((t = apr_strtok(tokbuf, "/", &last)) == NULL)
@@ -355,7 +355,7 @@ parse_token_type(const char *type, struct otp_user *tokinfo)
     /* Parse token type: event or time-based */
     if ((t = apr_strtok(NULL, "/", &last)) == NULL)
         return 0;
-    if (*t == 'E')
+    if (strcmp(t, "E") == 0)
         tokinfo->time_interval = 0;
     else if (*t == 'T') {
         if (!isdigit(*++t))
@@ -401,20 +401,20 @@ print_user(apr_file_t *file, const struct otp_user *user)
         break;
     }
     if (user->time_interval == 0)
-        snprintf(cbuf, sizeof(cbuf), "/E");
+        apr_snprintf(cbuf, sizeof(cbuf), "/E");
     else
-        snprintf(cbuf, sizeof(cbuf), "/T%d", user->time_interval);
-    snprintf(nbuf, sizeof(nbuf), "/%d", user->num_digits);
+        apr_snprintf(cbuf, sizeof(cbuf), "/T%d", user->time_interval);
+    apr_snprintf(nbuf, sizeof(nbuf), "/%d", user->num_digits);
 
     /* Abbreviate when default values apply */
     if (user->num_digits == DEFAULT_NUM_DIGITS) {
         *nbuf = '\0';
         if (user->algorithm == OTP_ALGORITHM_HOTP && user->time_interval == 0)
             *cbuf = '\0';
-        if (user->algorithm == OTP_ALGORITHM_MOTP && user->time_interval == 10)
+        else if (user->algorithm == OTP_ALGORITHM_MOTP && user->time_interval == 10)
             *cbuf = '\0';
     }
-    snprintf(tbuf, sizeof(tbuf), "%s%s%s", alg, cbuf, nbuf);
+    apr_snprintf(tbuf, sizeof(tbuf), "%s%s%s", alg, cbuf, nbuf);
 
     /* Print line in users file */
     apr_file_printf(file, "%-7s %-13s %-7s ", tbuf, user->username, *user->pin == '\0' ? "-" : user->pin);
@@ -486,11 +486,14 @@ motp(const u_char *key, size_t keylen, const char *pin, u_long counter, int ndig
     char keybuf[256];
 
     printhex(keybuf, sizeof(keybuf), key, keylen, keylen * 2);
-    snprintf(hashbuf, sizeof(hashbuf), "%lu%s%s", counter, keybuf, pin);
+    apr_snprintf(hashbuf, sizeof(hashbuf), "%lu%s%s", counter, keybuf, pin);
     MD5((u_char *)hashbuf, strlen(hashbuf), hash);
     printhex(buf, buflen, hash, sizeof(hash), ndigits);
 }
 
+/*
+ * Print hex digits into a buffer.
+ */
 static void
 printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digits)
 {
@@ -513,12 +516,11 @@ printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digi
  * HTTP basic authentication
  */
 static authn_status
-authn_otp_check_password(request_rec *r, const char *username, const char *password)
+authn_otp_check_password(request_rec *r, const char *username, const char *otp_given)
 {
     struct otp_config *const conf = get_config(r);
     struct otp_user userbuf;
     struct otp_user *const user = &userbuf;
-    const char *otp_given;
     authn_status status;
     int window_start;
     int window_stop;
@@ -541,17 +543,12 @@ authn_otp_check_password(request_rec *r, const char *username, const char *passw
         return status;
 
     /* Check PIN prefix (if appropriate) */
-    switch (user->algorithm) {
-    case OTP_ALGORITHM_MOTP:
-        otp_given = password;
-        break;
-    default:
-        if (strncmp(password, user->pin, strlen(user->pin)) != 0) {
+    if (user->algorithm != OTP_ALGORITHM_MOTP) {
+        if (strncmp(otp_given, user->pin, strlen(user->pin)) != 0) {
             ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" PIN does not match", user->username);
             return AUTH_DENIED;
         }
-        otp_given = password + strlen(user->pin);
-        break;
+        otp_given += strlen(user->pin);
     }
 
     /* Check OTP length */
@@ -610,7 +607,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *passw
         else
             hotp(user->key, user->keylen, counter + offset, user->num_digits, otpbuf10, otpbuf16, OTP_BUF_SIZE);
         if (strcmp(otp_given, otpbuf10) == 0 || strcasecmp(otp_given, otpbuf16) == 0) {
-            ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "accepting OTP for \"%s\" at counter %d (offset %d)",
+            ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "accepting OTP for \"%s\" at counter %d (offset adjust %d)",
               user->username, counter + offset, offset);
             goto success;
         }
@@ -686,7 +683,7 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
         if (user->algorithm == OTP_ALGORITHM_MOTP)
             motp(user->key, user->keylen, user->pin, counter, user->num_digits, otpbuf, OTP_BUF_SIZE);
         else
-            hotp(user->key, user->keylen, counter, user->num_digits, otpbuf, NULL, OTP_BUF_SIZE);
+            hotp(user->key, user->keylen, counter, user->num_digits, otpbuf, NULL, OTP_BUF_SIZE);   /* assume decimal! */
         linger = 0;
     }
 
@@ -722,13 +719,10 @@ get_config(request_rec *r)
     struct otp_config *dir_conf;
     struct otp_config *conf;
 
-    /* I don't understand this bug: sometimes r->per_dir_config == NULL */
+    /* I don't understand this bug: sometimes r->per_dir_config == NULL. Some weird linking problem. */
     if (r->per_dir_config == NULL) {
         ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "Oops, bug detected in mod_authn_otp: r->per_dir_config == NULL?");
         dir_conf = create_authn_otp_dir_config(r->pool, NULL);
-#if 0
-        dir_conf->users_file = apr_pstrdup(r->pool, "/home/archie/otpdir/users");
-#endif
     } else
         dir_conf = ap_get_module_config(r->per_dir_config, &authn_otp_module);
 
