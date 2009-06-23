@@ -41,6 +41,7 @@
 #include <time.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/md5.h>
 
 /* Module definition */
 module AP_MODULE_DECLARE_DATA authn_otp_module;
@@ -51,28 +52,33 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 #define LOCKFILE_SUFFIX         ".lock"
 #define TIME_FORMAT             "%Y-%m-%dT%H:%M:%SL"
 
-/* OTP counter types */
-#define OTP_TYPE_EVENT          1
-#define OTP_TYPE_TIME           2
+/* OTP counter algorithms */
+#define OTP_ALGORITHM_HOTP      1
+#define OTP_ALGORITHM_MOTP      2
 
 /* Default configuration settings */
 #define DEFAULT_NUM_DIGITS      6
-#define DEFAULT_TIME_INTERVAL   30
 #define DEFAULT_MAX_OFFSET      4
 #define DEFAULT_MAX_LINGER      (10 * 60)   /* 10 minutes */
+
+/* MobileOTP defaults */
+#define MOTP_TIME_INTERVAL      10
+
+/* Buffer size for OTPs */
+#define OTP_BUF_SIZE            16
 
 /* Per-directory configuration */
 struct otp_config {
     char    *users_file;        /* Name of the users file */
-    int     ndigits;            /* Number of digits in the OTP (not counting PIN) */
-    int     time_interval;      /* How long in seconds is a single time interval */
     int     max_offset;         /* Maximum allowed counter offset from expected value */
     int     max_linger;         /* Maximum time for which the same OTP can be used repeatedly */
 };
 
 /* User info structure */
 struct otp_user {
-    int             type;
+    int             algorithm;          /* one of OTP_ALGORITHM_* */
+    int             time_interval;      /* in seconds, or zero for event-based tokens */
+    int             num_digits;
     char            username[128];
     u_char          key[256];
     int             keylen;
@@ -84,8 +90,11 @@ struct otp_user {
 
 /* Internal functions */
 static authn_status find_update_user(request_rec *r, const char *usersfile, struct otp_user *const user, int update);
-static void         genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen);
+static void         hotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen);
+static void         motp(const u_char *key, size_t keylen, const char *pin, u_long counter, int ndigits, char *buf, size_t buflen);
+static int          parse_token_type(const char *type, struct otp_user *tokinfo);
 static void         print_user(apr_file_t *file, const struct otp_user *user);
+static void         printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digits);
 static authn_status authn_otp_check_password(request_rec *r, const char *username, const char *password);
 static authn_status authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm, char **rethash);
 static void         *create_authn_otp_dir_config(apr_pool_t *p, char *d);
@@ -117,7 +126,6 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
     struct tm tm;
     int found = 0;
     int linenum;
-    int type;
     char *last;
     char *s;
     char *t;
@@ -158,6 +166,7 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
 
     /* Scan entries */
     for (linenum = 1; apr_file_gets(linebuf, sizeof(linebuf), file) == 0; linenum++) {
+        struct otp_user tokinfo;
 
         /* Save a copy of the line */
         snprintf(linecopy, sizeof(linecopy), "%s", linebuf);
@@ -168,12 +177,8 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
         if ((s = apr_strtok(linebuf, WHITESPACE, &last)) == NULL)
             goto copy;
 
-        /* Get type */
-        if (strcmp(s, "E") == 0)
-            type = OTP_TYPE_EVENT;
-        else if (strcmp(s, "T") == 0)
-            type = OTP_TYPE_TIME;
-        else {
+        /* Parse token type */
+        if (parse_token_type(s, &tokinfo) != 0) {
             apr_snprintf(invalid_reason, sizeof(invalid_reason), "invalid token type \"%s\"", s);
             goto invalid;
         }
@@ -198,7 +203,9 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
         /* Initialize user record */
         memset(user, 0, sizeof(*user));
         apr_snprintf(user->username, sizeof(user->username), "%s", s);
-        user->type = type;
+        user->algorithm = tokinfo.algorithm;
+        user->time_interval = tokinfo.time_interval;
+        user->num_digits = tokinfo.num_digits;
 
         /* Read PIN */
         if ((s = apr_strtok(NULL, WHITESPACE, &last)) == NULL) {
@@ -307,30 +314,125 @@ fail:
     return AUTH_GENERAL_ERROR;
 }
 
+/*
+ * Parse a token type string such as "HOTP/T30/6".
+ * Returns 0 if successful, else -1 on parse error.
+ */
+static int
+parse_token_type(const char *type, struct otp_user *tokinfo)
+{
+    char tokbuf[128];
+    char *last;
+    char *eptr;
+    char *t;
+
+    /* Backwards compatibility hack */
+    if (strcmp(type, "E") == 0)
+        type = "HOTP/E";
+    else if (strcmp(type, "T") == 0)
+        type = "HOTP/T30";
+
+    /* Initialize */
+    memset(tokinfo, 0, sizeof(*tokinfo));
+    snprintf(tokbuf, sizeof(tokbuf), "%s", type);
+
+    /* Parse algorithm */
+    if ((t = apr_strtok(tokbuf, "/", &last)) == NULL)
+        return -1;
+
+    /* Apply per-algorithm defaults */
+    if (strcasecmp(t, "HOTP") == 0) {
+        tokinfo->algorithm = OTP_ALGORITHM_HOTP;
+        tokinfo->time_interval = 0;
+        tokinfo->num_digits = DEFAULT_NUM_DIGITS;
+    } else if (strcasecmp(t, "MOTP") == 0) {
+        tokinfo->algorithm = OTP_ALGORITHM_MOTP;
+        tokinfo->time_interval = MOTP_TIME_INTERVAL;
+        tokinfo->num_digits = DEFAULT_NUM_DIGITS;
+    } else
+        return -1;
+
+    /* Parse token type: event or time-based */
+    if ((t = apr_strtok(NULL, "/", &last)) == NULL)
+        return 0;
+    if (*t == 'E')
+        tokinfo->time_interval = 0;
+    else if (*t == 'T') {
+        if (!isdigit(*++t))
+            return -1;
+        tokinfo->time_interval = strtol(t, &eptr, 10);
+        if (tokinfo->time_interval <= 0 || *eptr != '\0')
+            return -1;
+    } else
+        return -1;
+
+    /* Parse #digits */
+    if ((t = apr_strtok(NULL, "/", &last)) == NULL)
+        return 0;
+    if (!isdigit(*t))
+        return -1;
+    tokinfo->num_digits = strtol(t, &eptr, 10);
+    if (tokinfo->num_digits <= 0 || *eptr != '\0' || tokinfo->num_digits > sizeof(powers10) / sizeof(*powers10))
+        return -1;
+
+    /* Done */
+    return 0;
+}
+
 static void
 print_user(apr_file_t *file, const struct otp_user *user)
 {
-    char timebuf[64];
+    const char *alg;
+    char cbuf[64];
+    char nbuf[64];
+    char tbuf[128];
     int i;
 
-    apr_file_printf(file, "%c %-13s %-7s ",
-      user->type == OTP_TYPE_EVENT ? 'E' : 'T', user->username, *user->pin == '\0' ? "-" : user->pin);
+    /* Format token type sub-fields */
+    switch (user->algorithm) {
+    case OTP_ALGORITHM_HOTP:
+        alg = "HOTP";
+        break;
+    case OTP_ALGORITHM_MOTP:
+        alg = "MOTP";
+        break;
+    default:
+        alg = "???";
+        break;
+    }
+    if (user->time_interval == 0)
+        snprintf(cbuf, sizeof(cbuf), "/E");
+    else
+        snprintf(cbuf, sizeof(cbuf), "/T%d", user->time_interval);
+    snprintf(nbuf, sizeof(nbuf), "/%d", user->num_digits);
+
+    /* Abbreviate when default values apply */
+    if (user->num_digits == DEFAULT_NUM_DIGITS) {
+        *nbuf = '\0';
+        if (user->algorithm == OTP_ALGORITHM_HOTP && user->time_interval == 0)
+            *cbuf = '\0';
+        if (user->algorithm == OTP_ALGORITHM_MOTP && user->time_interval == 10)
+            *cbuf = '\0';
+    }
+    snprintf(tbuf, sizeof(tbuf), "%s%s%s", alg, cbuf, nbuf);
+
+    /* Print line in users file */
+    apr_file_printf(file, "%-7s %-13s %-7s ", tbuf, user->username, *user->pin == '\0' ? "-" : user->pin);
     for (i = 0; i < user->keylen; i++)
         apr_file_printf(file, "%02x", user->key[i]);
     apr_file_printf(file, " %-7ld", user->offset);
     if (*user->last_otp != '\0') {
-        strftime(timebuf, sizeof(timebuf), TIME_FORMAT, localtime(&user->last_auth));
-        apr_file_printf(file, " %-7s %s", user->last_otp, timebuf);
+        strftime(tbuf, sizeof(tbuf), TIME_FORMAT, localtime(&user->last_auth));
+        apr_file_printf(file, " %-7s %s", user->last_otp, tbuf);
     }
     apr_file_printf(file, "\n");
 }
-
 
 /*
  * Generate an OTP using the algorithm specified in RFC 4226,
  */
 static void
-genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen)
+hotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen)
 {
     const int max10 = sizeof(powers10) / sizeof(*powers10);
     const int max16 = 8;
@@ -361,12 +463,50 @@ genotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf1
         ndigits = 1;
 
     /* Generate decimal digits */
-    apr_snprintf(buf10, buflen, "%0*d", ndigits < max10 ? ndigits : max10,
-      ndigits < max10 ? value % powers10[ndigits - 1] : value);
+    if (buf10 != NULL) {
+        apr_snprintf(buf10, buflen, "%0*d", ndigits < max10 ? ndigits : max10,
+          ndigits < max10 ? value % powers10[ndigits - 1] : value);
+    }
 
     /* Generate hexadecimal digits */
-    apr_snprintf(buf16, buflen, "%0*x", ndigits < max16 ? ndigits : max16,
-      ndigits < max16 ? (value & ((1 << (4 * ndigits)) - 1)) : value);
+    if (buf16 != NULL) {
+        apr_snprintf(buf16, buflen, "%0*x", ndigits < max16 ? ndigits : max16,
+          ndigits < max16 ? (value & ((1 << (4 * ndigits)) - 1)) : value);
+    }
+}
+
+/*
+ * Generate an OTP using the mOTP algorithm defined by http://motp.sourceforge.net/
+ */
+static void
+motp(const u_char *key, size_t keylen, const char *pin, u_long counter, int ndigits, char *buf, size_t buflen)
+{
+    u_char hash[MD5_DIGEST_LENGTH];
+    char hashbuf[256];
+    char keybuf[256];
+
+    printhex(keybuf, sizeof(keybuf), key, keylen, keylen * 2);
+    snprintf(hashbuf, sizeof(hashbuf), "%lu%s%s", counter, keybuf, pin);
+    MD5((u_char *)hashbuf, strlen(hashbuf), hash);
+    printhex(buf, buflen, hash, sizeof(hash), ndigits);
+}
+
+static void
+printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digits)
+{
+    const char *hexdig = "0123456789abcdef";
+    int i;
+
+    if (buflen > 0)
+        *buf = '\0';
+    for (i = 0; i / 2 < dlen && i < max_digits && i < buflen - 1; i++) {
+        u_int val = data[i / 2];
+        if ((i & 1) == 0)
+            val >>= 4;
+        val &= 0x0f;
+        *buf++ = hexdig[val];
+        *buf = '\0';
+    }
 }
 
 /*
@@ -400,47 +540,61 @@ authn_otp_check_password(request_rec *r, const char *username, const char *passw
     if ((status = find_update_user(r, conf->users_file, user, 0)) != AUTH_USER_FOUND)
         return status;
 
-    /* Compare PIN */
-    if (strncmp(password, user->pin, strlen(user->pin)) != 0) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" PIN does not match", user->username);
-        return AUTH_DENIED;
+    /* Check PIN prefix (if appropriate) */
+    switch (user->algorithm) {
+    case OTP_ALGORITHM_MOTP:
+        otp_given = password;
+        break;
+    default:
+        if (strncmp(password, user->pin, strlen(user->pin)) != 0) {
+            ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" PIN does not match", user->username);
+            return AUTH_DENIED;
+        }
+        otp_given = password + strlen(user->pin);
+        break;
     }
-    otp_given = password + strlen(user->pin);
 
     /* Check OTP length */
-    if (strlen(otp_given) != conf->ndigits) {
+    if (strlen(otp_given) != user->num_digits) {
         ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" OTP has the wrong length %d != %d",
-          user->username, (int)strlen(otp_given), conf->ndigits);
+          user->username, (int)strlen(otp_given), user->num_digits);
         return AUTH_DENIED;
     }
 
-    /* Check for reuse of previous OTP within the configured linger time */
+    /* Check for reuse of previous OTP */
     now = time(NULL);
-    if (now >= user->last_auth && now < user->last_auth + conf->max_linger && strcmp(otp_given, user->last_otp) == 0) {
-        ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "accepting reuse of OTP for \"%s\" within %d sec. linger time",
-          user->username, conf->max_linger);
-        return AUTH_GRANTED;
+    if (strcmp(otp_given, user->last_otp) == 0) {
+
+        /* Is it within the configured linger time? */
+        if (now >= user->last_auth && now < user->last_auth + conf->max_linger) {
+            ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "accepting reuse of OTP for \"%s\" within %d sec. linger time",
+              user->username, conf->max_linger);
+            return AUTH_GRANTED;
+        }
+
+        /* Report failure to the log */
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the previous OTP"
+          " but it has expired (max linger is %d sec.)", user->username, conf->max_linger);
+        return AUTH_DENIED;
     }
 
     /* Get expected counter value and offset window */
-    switch (user->type) {
-    case OTP_TYPE_EVENT:
+    if (user->time_interval == 0) {
         counter = user->offset;
         window_start = 1;
         window_stop = conf->max_offset;
-        break;
-    case OTP_TYPE_TIME:
-        counter = now / conf->time_interval + user->offset;
+    } else {
+        counter = now / user->time_interval + user->offset;
         window_start = -conf->max_offset;
         window_stop = conf->max_offset;
-        break;
-    default:
-        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "mod_authn_otp internal error");
-        return AUTH_GENERAL_ERROR;
     }
 
     /* Test OTP using expected counter first */
-    genotp(user->key, user->keylen, counter, conf->ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
+    *otpbuf10 = '\0';
+    if (user->algorithm == OTP_ALGORITHM_MOTP)
+        motp(user->key, user->keylen, user->pin, counter, user->num_digits, otpbuf16, OTP_BUF_SIZE);
+    else
+        hotp(user->key, user->keylen, counter, user->num_digits, otpbuf10, otpbuf16, OTP_BUF_SIZE);
     if (strcmp(otp_given, otpbuf10) == 0 || strcasecmp(otp_given, otpbuf16) == 0) {
         ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "accepting OTP for \"%s\" at counter %d", user->username, counter);
         offset = 0;
@@ -451,7 +605,10 @@ authn_otp_check_password(request_rec *r, const char *username, const char *passw
     for (offset = window_start; offset <= window_stop; offset++) {
         if (offset == 0)    /* already tried it */
             continue;
-        genotp(user->key, user->keylen, counter + offset, conf->ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
+        if (user->algorithm == OTP_ALGORITHM_MOTP)
+            motp(user->key, user->keylen, user->pin, counter + offset, user->num_digits, otpbuf16, OTP_BUF_SIZE);
+        else
+            hotp(user->key, user->keylen, counter + offset, user->num_digits, otpbuf10, otpbuf16, OTP_BUF_SIZE);
         if (strcmp(otp_given, otpbuf10) == 0 || strcasecmp(otp_given, otpbuf16) == 0) {
             ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "accepting OTP for \"%s\" at counter %d (offset %d)",
               user->username, counter + offset, offset);
@@ -460,26 +617,12 @@ authn_otp_check_password(request_rec *r, const char *username, const char *passw
     }
 
     /* Report failure to the log */
-    if (strcmp(otp_given, user->last_otp) == 0) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the previous OTP"
-          " but it has expired (max linger is %d sec.)", user->username, conf->max_linger);
-    } else
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the wrong OTP", user->username);
+    ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the wrong OTP", user->username);
     return AUTH_DENIED;
 
 success:
     /* Update user's last auth information and next expected offset */
-    switch (user->type) {
-    case OTP_TYPE_EVENT:                    /* advance counter by one */
-        user->offset = counter + offset + 1;
-        break;
-    case OTP_TYPE_TIME:                     /* save user's current time offset */
-        user->offset = offset;
-        break;
-    default:
-        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "mod_authn_otp internal error");
-        return AUTH_GENERAL_ERROR;
-    }
+    user->offset = user->time_interval == 0 ? counter + offset + 1 : user->offset + offset;
     apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", otp_given);
     user->last_auth = now;
 
@@ -500,10 +643,9 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
     struct otp_user userbuf;
     struct otp_user *const user = &userbuf;
     authn_status status;
-    char otpbuf10[32];
-    char otpbuf16[32];
-    char hashbuf[1024];
-    int counter;
+    char hashbuf[256];
+    char otpbuf[32];
+    int counter = 0;
     int linger;
     time_t now;
 
@@ -525,7 +667,7 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
         ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r,
           "generating digest hash for \"%s\" assuming reuse of OTP within %d sec. linger time",
           user->username, conf->max_linger);
-        apr_snprintf(otpbuf10, sizeof(otpbuf10), "%s", user->last_otp);     /* assuming decimal here! */
+        apr_snprintf(otpbuf, sizeof(otpbuf), "%s", user->last_otp);
         linger = 1;
     } else {
 
@@ -536,27 +678,21 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
         }
 
         /* Get expected counter value */
-        switch (user->type) {
-        case OTP_TYPE_EVENT:
-            counter = user->offset;
-            break;
-        case OTP_TYPE_TIME:
-            counter = now / conf->time_interval + user->offset;
-            break;
-        default:
-            ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "mod_authn_otp internal error");
-            return AUTH_GENERAL_ERROR;
-        }
+        counter = user->time_interval == 0 ? user->offset : now / user->time_interval + user->offset;
 
         /* Generate OTP using expected counter */
         ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "generating digest hash for \"%s\" assuming OTP counter %d",
           user->username, counter);
-        genotp(user->key, user->keylen, counter, conf->ndigits, otpbuf10, otpbuf16, sizeof(otpbuf10));
+        if (user->algorithm == OTP_ALGORITHM_MOTP)
+            motp(user->key, user->keylen, user->pin, counter, user->num_digits, otpbuf, OTP_BUF_SIZE);
+        else
+            hotp(user->key, user->keylen, counter, user->num_digits, otpbuf, NULL, OTP_BUF_SIZE);
         linger = 0;
     }
 
     /* Generate digest hash */
-    apr_snprintf(hashbuf, sizeof(hashbuf), "%s:%s:%s%s", user->username, realm, user->pin, otpbuf10);
+    apr_snprintf(hashbuf, sizeof(hashbuf), "%s:%s:%s%s", user->username, realm,
+      user->algorithm == OTP_ALGORITHM_MOTP ? "" : user->pin, otpbuf);
     *rethash = ap_md5(r->pool, (void *)hashbuf);
 
 #if 0
@@ -566,14 +702,9 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
 
     /* If we are past the previous linger time, assume counter advance and update user's info */
     if (!linger) {
-        switch (user->type) {
-        case OTP_TYPE_EVENT:                    /* advance counter by one */
+        if (user->time_interval == 0)
             user->offset = counter + 1;
-            break;
-        default:
-            break;
-        }
-        apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", otpbuf10);   /* assuming decimal here! */
+        apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", otpbuf);
         user->last_auth = now;
         find_update_user(r, conf->users_file, user, 1);
     }
@@ -605,16 +736,10 @@ get_config(request_rec *r)
     conf = apr_pcalloc(r->pool, sizeof(*conf));
     if (dir_conf->users_file != NULL)
         conf->users_file = apr_pstrdup(r->pool, dir_conf->users_file);
-    conf->ndigits = dir_conf->ndigits;
-    conf->time_interval = dir_conf->time_interval;
     conf->max_offset = dir_conf->max_offset;
     conf->max_linger = dir_conf->max_linger;
 
     /* Apply defaults for any unset values */
-    if (conf->ndigits == -1)
-        conf->ndigits = DEFAULT_NUM_DIGITS;
-    if (conf->time_interval == -1)
-        conf->time_interval = DEFAULT_TIME_INTERVAL;
     if (conf->max_offset == -1)
         conf->max_offset = DEFAULT_MAX_OFFSET;
     if (conf->max_linger == -1)
@@ -633,8 +758,6 @@ create_authn_otp_dir_config(apr_pool_t *p, char *d)
     struct otp_config *conf = apr_pcalloc(p, sizeof(struct otp_config));
 
     conf->users_file = NULL;
-    conf->ndigits = -1;
-    conf->time_interval = -1;
     conf->max_offset = -1;
     conf->max_linger = -1;
     return conf;
@@ -651,8 +774,6 @@ merge_authn_otp_dir_config(apr_pool_t *p, void *base_conf, void *new_conf)
         conf->users_file = apr_pstrdup(p, conf2->users_file);
     else if (conf1->users_file != NULL)
         conf->users_file = apr_pstrdup(p, conf1->users_file);
-    conf->ndigits = conf2->ndigits != -1 ? conf2->ndigits : conf1->ndigits;
-    conf->time_interval = conf2->time_interval != -1 ? conf2->time_interval : conf1->time_interval;
     conf->max_offset = conf2->max_offset != -1 ? conf2->max_offset : conf1->max_offset;
     conf->max_linger = conf2->max_linger != -1 ? conf2->max_linger : conf1->max_linger;
     return conf;
@@ -679,16 +800,6 @@ static const command_rec authn_otp_cmds[] =
         (void *)APR_OFFSETOF(struct otp_config, users_file),
         OR_AUTHCFG,
         "pathname of the one-time password users file"),
-    AP_INIT_TAKE1("OTPAuthNumDigits",
-        ap_set_int_slot,
-        (void *)APR_OFFSETOF(struct otp_config, ndigits),
-        OR_AUTHCFG,
-        "number of digits in the one-time passwords (not including PIN)"),
-    AP_INIT_TAKE1("OTPAuthTimeInterval",
-        ap_set_int_slot,
-        (void *)APR_OFFSETOF(struct otp_config, time_interval),
-        OR_AUTHCFG,
-        "time interval (in seconds) for time-based one-time passwords"),
     AP_INIT_TAKE1("OTPAuthMaxOffset",
         ap_set_int_slot,
         (void *)APR_OFFSETOF(struct otp_config, max_offset),

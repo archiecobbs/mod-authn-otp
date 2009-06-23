@@ -29,11 +29,12 @@
 .Bk -words
 .Op Fl fht
 .Op Fl c Ar counter
-.Op Fl d Ar ndig
+.Op Fl d Ar #digits
 .Op Fl i Ar secs
+.Op Fl m Ar PIN
 .Op Fl w Ar num
 .Ar key
-.Op Ar otp
+.Op Ar password
 .Ek
 .Sh DESCRIPTION
 .Nm
@@ -114,6 +115,14 @@ The default value is 30 seconds.
 This flag is ignored unless the
 .Fl t
 flag is also given.
+.It Fl m
+Use the Mobile-OTP algorithm with the given PIN instead of the HOTP/OATH algorithm.
+This flag imples
+.Fl i Ar 10
+and
+.Fl d Ar 6 .
+Normally you also want to specify
+.Fl t .
 .It Fl t
 Use the current time as the basis for the target counter value.
 This flag is incompatible with the
@@ -159,6 +168,10 @@ A system error occurred.
 .Rs
 .%T "mod_authn_otp: Apache module for one-time password authentication"
 .%O "http://mod-authn-otp.googlecode.com/"
+.Re
+.Rs
+.%T "Mobile-OTP: Mobile One Time Passwords"
+.%O "http://motp.sourceforge.net/"
 .Re
 .Sh AUTHOR
 .An Archie L. Cobbs Aq archie@dellroad.org

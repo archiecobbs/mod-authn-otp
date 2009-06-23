@@ -19,7 +19,7 @@
 # $Id$
 #
 
-AC_INIT([mod_authn_otp Apache2 authentication module supporting one-time passwords], [1.0.1], [http://mod-auth-otp.googlecode.com/], [mod_authn_otp])
+AC_INIT([mod_authn_otp Apache2 authentication module supporting one-time passwords], [1.1.0], [http://mod-auth-otp.googlecode.com/], [mod_authn_otp])
 AC_CONFIG_AUX_DIR(scripts)
 AM_INIT_AUTOMAKE
 dnl AM_MAINTAINER_MODE
@@ -33,7 +33,8 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_PATH_PROG(CP, cp)
 AC_PATH_PROG(APXS, apxs2, "no", [/usr/sbin /usr/local/bin /usr/local/sbin /usr/local/apache/bin])
-[test x"$APXS" = "xno" && ] AC_MSG_ERROR([cannot find apxs2])
+[test x"$APXS" = "xno" && ] AC_PATH_PROG(APXS, apxs, "no", [/usr/sbin /usr/local/bin /usr/local/sbin /usr/local/apache/bin])
+[test x"$APXS" = "xno" && ] AC_MSG_ERROR([cannot find apxs or apxs2])
 
 # Add GCC flags
 [GCC_WARN_FLAGS=""
@@ -54,7 +55,7 @@ AC_CHECK_LIB(ssl, EVP_sha1,,
 
 # Check for required header files
 AC_HEADER_STDC
-AC_CHECK_HEADERS(ctype.h err.h errno.h openssl/evp.h openssl/hmac.h stdio.h string.h time.h unistd.h, [],
+AC_CHECK_HEADERS(ctype.h err.h errno.h openssl/evp.h openssl/hmac.h openssl/md5.h stdio.h string.h time.h unistd.h, [],
 	[AC_MSG_ERROR([required header file '$ac_header' not found])])
 
 # Generated files
