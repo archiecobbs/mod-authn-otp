@@ -1,0 +1,177 @@
+.\"  -*- nroff -*-
+.\"
+.\" otptool - HOTP/OATH one-time password utility
+.\"
+.\" Copyright 2009 Archie L. Cobbs <archie@dellroad.org>
+.\"
+.\" Licensed under the Apache License, Version 2.0 (the "License");
+.\" you may not use this file except in compliance with the License.
+.\" You may obtain a copy of the License at
+.\"
+.\"     http://www.apache.org/licenses/LICENSE-2.0
+.\"
+.\" Unless required by applicable law or agreed to in writing, software
+.\" distributed under the License is distributed on an "AS IS" BASIS,
+.\" WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\" See the License for the specific language governing permissions and
+.\" limitations under the License.
+.\"
+.\" $Id$
+.\"/
+.Dd June 21, 2008
+.Dt OTPTOOL 1
+.Os
+.Sh NAME
+.Nm otptool
+.Nd HOTP/OATH one-time password utility
+.Sh SYNOPSIS
+.Nm otptool
+.Bk -words
+.Op Fl fht
+.Op Fl c Ar counter
+.Op Fl d Ar #digits
+.Op Fl i Ar secs
+.Op Fl m Ar PIN
+.Op Fl w Ar num
+.Ar key
+.Op Ar password
+.Ek
+.Sh DESCRIPTION
+.Nm
+is a utility for generating, verifying, and synchronizing one-time passwords
+created using the HOTP/OATH algorithm defined by RFC 4226.
+.Pp
+The
+.Ar key
+is the token's binary secret key and is specified as a hexadecimal string.
+.Pp
+If no
+.Ar otp
+is given,
+.Nm
+generates the one-time password corresponding to the given key and target counter value
+and prints to standard output the counter followed by the decimal and hexadecimal one-time passwords.
+If
+.Ar otp
+is given, then
+.Nm
+verifies that
+.Ar otp
+is the correct one-time password for the given
+.Ar key
+and counter value.
+If so, it outputs the counter value.
+.Ar otp
+may be either the decimal or hexadecimal one-time password.
+.Pp
+The target counter value is determined as follows: if the
+.Fl t
+flag is given, use the current time in seconds since the UNIX epoch divided by the configured time interval (default 30 seconds);
+otherwise, if the
+.Fl c
+flag is given, use the given
+.Ar counter ;
+otherwise, use the value zero.
+.Pp
+In both cases, a range of target counter values may be specified using the
+.Fl w
+flag.
+When both
+.Fl w
+and
+.Ar otp
+are given,
+.Nm
+will search the entire range for a matching counter value,
+starting with the target counter value and working away from it.
+This mode can be used to resynchronize an unsychronized counter.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl c
+Specify the starting target counter value for the one-time password generation or search.
+This flag is incompatible with the
+.Fl t
+flag;
+if neither flag is given, the default value is zero.
+.It Fl d
+Specify the required number of digits in the one-time password.
+Giving an
+.Ar otp
+argument and specifying a different length here will result in no match being found (no search is performed).
+Otherwise, the default value is the length of
+.Ar otp ,
+if given, or else six if not.
+.It Fl f
+Read the key from the file named
+.Ar key
+instead of parsing
+.Ar key
+as a hexadecimal string.
+.It Fl h
+Print the usage message and exit successfully.
+.It Fl i
+Specify the length of a single time interval in seconds.
+The default value is 30 seconds.
+This flag is ignored unless the
+.Fl t
+flag is also given.
+.It Fl m
+Use the Mobile-OTP algorithm with the given PIN instead of the HOTP/OATH algorithm.
+This flag imples
+.Fl i Ar 10
+and
+.Fl d Ar 6 .
+Normally you also want to specify
+.Fl t .
+.It Fl t
+Use the current time as the basis for the target counter value.
+This flag is incompatible with the
+.Fl c
+flag.
+.It Fl w
+Specify the width of a window of counter values within which to iterate when
+generating or searching for one-time passwords.
+When
+.Fl t
+is used, the window extends the given distance both before and after the target counter value;
+otherwise, the window extends forward of the target counter value.
+When both
+.Ar otp
+and
+.Fl t
+are given, the search starts with the initial target counter and works away from it
+in both directions.
+.El
+.Sh RETURN VALUE
+.Nm
+exits with one of the following return values:
+.Bl -tag -width xxx
+.It 0
+The one-time password(s) was/were successfully generated, or
+.Ar otp
+matched (one of) the target counter value(s).
+.It 1
+.Nm
+was invoked with invalid command line flags or parameters.
+.It 2
+The given
+.Ar otp
+did not match any counter value(s) in the search window.
+.It 3
+A system error occurred.
+.El
+.Sh SEE ALSO
+.Rs
+.%T "HOTP: An HMAC-Based One-Time Password Algorithm"
+.%O "http://www.ietf.org/rfc/rfc4226.txt"
+.Re
+.Rs
+.%T "mod_authn_otp: Apache module for one-time password authentication"
+.%O "http://mod-authn-otp.googlecode.com/"
+.Re
+.Rs
+.%T "Mobile-OTP: Mobile One Time Passwords"
+.%O "http://motp.sourceforge.net/"
+.Re
+.Sh AUTHOR
+.An Archie L. Cobbs Aq archie@dellroad.org

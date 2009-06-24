@@ -1,0 +1,56 @@
+# $Id$
+
+#
+# Example users file for mod_authn_otp
+#
+# Blank lines and lines starting with '#' are ignored. Fields are whitespace-separated.
+#
+# Fields:
+#
+#   1. Token Type         See below
+#   2. Username           User's username
+#   3. PIN                User's PIN prefix or "-" if user has no PIN
+#   4. Token Key          Secret key for the token algorithm (see RFC 4226)
+#   5. Counter/Offset     Next expected counter value (event tokens) or counter offset (time tokens)
+#   6. Last OTP           The previous successfully used one-time password
+#   7. Time of Last OTP   Local timestamp when the last OTP was generated (in the form 2009-06-12T17:52:32L)
+#
+#   Fields 5 and beyond are optional. Fields 6 and beyond should be omitted for new users.
+#
+# Token Type Field:
+#
+#   This field contains a string in the format: ALGORITHM [ / COUNTERINFO [ / DIGITS ] ]
+#
+#   The ALGORITHM is either "HOTP" (RFC 4226) or "MOTP" (http://motp.sourceforge.net/).
+#
+#   The COUNTERINFO is either "E" for an event-based token, or "TNN" for a time based token
+#   where "NN" is the number of seconds in one time interval. For HOTP, the default is "E";
+#   for MOTP, the default is "T10".
+#
+#   The DIGITS is the number of digits in the one-time password; the default is six.
+#
+#   Examples:
+#
+#       HOTP            - HOTP event-based token with six digit OTP
+#       HOTP/E          - HOTP event-based token with six digit OTP
+#       HOTP/E/8        - HOTP event-based token with eight digit OTP
+#       HOTP/T30        - HOTP time-based token with 30 second interval and six digit OTP
+#       HOTP/T60        - HOTP time-based token with 60 second interval and six digit OTP
+#       HOTP/T60/5      - HOTP time-based token with 60 second interval and five digit OTP
+#       MOTP            - Mobile-OTP time-based token 10 second interval and six digit OTP
+#       MOTP/E          - Mobile-OTP event-based token with six digit OTP
+#
+# For more info see: http://code.google.com/p/mod-authn-otp/wiki/UsersFile
+#
+
+# Some users who have logged in at least once.
+
+HOTP    barney        1234    8a2d55707a9084982649dadc04b426a06df19ab2 21      820658  2009-06-12T17:52:32L
+HOTP    fred          5678    acbd18db4cc2f85cedef654fccc4a4d8bd537891 78      617363  2009-06-04T21:17:03L
+HOTP/T  joe           999999  ef654fccdef654fccc4a4d8acbd18db4cc2f85ce -2      883913  2009-06-04T21:17:03L
+
+# Wilma and Betty are new users. Note betty does not have a PIN so "-" is used instead as a placeholder
+
+HOTP    wilma         5678    a4d8acbddef654fccc418db4cc2f85cea6339f00
+HOTP    betty         -       54fccc418a4d8acbddef6db4cc2f85ce99321d64
+
