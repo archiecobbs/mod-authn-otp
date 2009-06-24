@@ -33,6 +33,8 @@ For digest authentication, you'd do something like this:
 
 Next, sprinkle in whatever additional usual Apache configuration directives you want.
 
+Note that the number of digits in a one-time password and the length of a single timer interval (for time based tokens) is configured in the UsersFile on a per-token basis.
+
 == Configuring mod_authn_otp ==
 
 Finally, configure the *mod_authn_otp* specific directives:
@@ -56,7 +58,7 @@ See the UsersFile wiki page for more information about its format and required p
 
 For event based tokens, this is the maximum allowable number of "lost" one-time passwords before the next one-time password will fail to authenticate. The higher this value, the more likely the server will stay synchronized with the token even if you have users who get bored and generate one-time passwords just for fun and then throw them away. On the other hand, the amount of computation the server performs when an incorrect one-time password is used increases linearly with this number (note if the PIN is incorrect, we never get that far, so there's no denial of service attack without knowing at least the PIN).
 
-For time based tokens, this is the maximum number of time intervals (default 30 seconds, see above) that the server will search before and after the current time interval for a matching one-time password. The performance implications are similar as with event based tokens.
+For time based tokens, this is the maximum number of time intervals that the server will search before and after the current time interval for a matching one-time password. The performance implications are similar as with event based tokens.
 
 The default value for this directive is 4.
 
