@@ -11,9 +11,10 @@ Note that the token key is not the same thing as the token ID, which is typicall
 
 === Hardware Tokens ===
 
-I will list compatible tokens here as people report them...
+  * [http://www.aladdin.com/etoken/devices/pass.aspx Aladdin's eToken PASS] should work according to the description but has not actually been tested.
 
 === Software Tokens ===
 
   * [http://www.securethecloud.com/mobile-client-pledge/ Nordic Edge's Pledge] is an event based software token that runs on the iPhone and cell phones. Follow the instructions for a free profile, then enter the token key into your *mod_authn_otp* users file.
+  * [http://itunes.apple.com/WebObjects/MZStore.woa/wa/viewSoftware?id=318414073&mt=8 Mobile-OTP on the iPhone] is an iPhone app implementing the older [http://motp.sourceforge.net/ Mobile-OTP] algorithm.
 

@@ -39,8 +39,6 @@ Finally, configure the *mod_authn_otp* specific directives:
 
 || *Directive* || *Type* || *Default* || *Required?* || *Description* ||
 || *OTPAuthUsersFile* || File ||  _N/A_  || Yes || Specifies the users file containing user, PIN, and token information ||
-|| *OTPAuthNumDigits* || Number || 6 || No || How many digits are in generated one-time passwords (not including PIN prefix) ||
-|| *OTPAuthTimeInterval* || Number || 30 || No || The length in seconds of one time interval for time-based tokens ||
 || *OTPAuthMaxOffset* || Number || 4 || No || Maximum allowed offset from the expected token counter value ||
 || *OTPAuthMaxLinger* || Number || 600 || No || Maximum allowed linger time in seconds ||
 
@@ -53,18 +51,6 @@ This directive configures the *users file* which is plain text file that functio
 The system file permissions assigned to this file and its containing directory are important for proper operation. In order to function correctly, the Apache server must have permission to create files in the same directory as this file, and to delete (overwrite) this file with an updated copy. 
 
 See the UsersFile wiki page for more information about its format and required permissions.
-
-=== OTPAuthNumDigits ===
-
-This directive specifies how many digits are in a single one-time password. This is almost always six, but the specification allows for up to as many as ten digits.
-
-The default value for this directive is six.
-
-=== OTPAuthTimeInterval ===
-
-Tokens come in two flavors: event based and time based. This directive applies to time based tokens only and it specifies how long a single time interval is. The standard value out there seems to be 30 seconds. Note that time based tokens simply will not work if they are using a different value than is configured here.
-
-The default value for this directive is 30 seconds.
 
 === OTPAuthMaxOffset ===
 
