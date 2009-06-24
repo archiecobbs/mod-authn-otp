@@ -28,6 +28,10 @@ module: mod_authn_otp.c
 install-exec-local: module
 		$(APXS) -S LIBEXECDIR="$(DESTDIR)`$(APXS) -q LIBEXECDIR`" -i mod_authn_otp.la
 
+install-exec-hook:
+		test -z "$(STRIP)" || $(STRIP) $(DESTDIR)`$(APXS) -q LIBEXECDIR`/mod_authn_otp.so
+		test -z "$(STRIP)" || $(STRIP) $(DESTDIR)$(bindir)/otptool
+
 bin_PROGRAMS=       otptool
 
 noinst_HEADERS=     otptool.h
