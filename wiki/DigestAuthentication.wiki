@@ -41,3 +41,7 @@ Because the server never actually sees the one-time password the user entered, i
 
 Manual synchronization is still possible, of course. This would mean editing the users file and setting the offset field directly. However, for many tokens it's difficult or impossible to retrieve the current counter value, so you'd essentially be guessing.
 
+== Hex vs. Decimal ==
+
+When doing HTTP basic authentication, *mod_authn_otp* will accept either the decimal or hexadecimal one-time password. With digest authentication, however, it must choose which format ahead of time. For HOTP/OATH, decimal is assumed, while for Mobile-OTP, hexadecimal is assumed.
+

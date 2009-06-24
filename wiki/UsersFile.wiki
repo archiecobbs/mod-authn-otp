@@ -10,6 +10,8 @@ Users may have an arbitrary length PIN, or a dash ("-") for no PIN. If a PIN is 
 
 Tokens must be configured as event tokens or time tokens and of course the token's key must be entered. In addition, you may optionally specify the initial counter value (for event tokens) or relative time period offset adjustment (for time tokens); both values default to zero if not specified.
 
+For time based tokens, the length of a single time interval is specified as part of the token type (see below).
+
 See OneTimePasswords and [Tokens] for more information about how one-time passowords and tokens work.
 
 == Permissions ==
@@ -85,5 +87,5 @@ HOTP    betty         -       54fccc418a4d8acbddef6db4cc2f85ce99321d64
 
 == Mobile-OTP ==
 
-*mod_authn_otp* supports using the [http://motp.sourceforge.net/ Mobile-OTP] algorithm instead of HOTP/OATH. In this case the PIN (if any) should be entered into the token when generating the one-time password and _not_ as a prefix to the HTTP password.
+*mod_authn_otp* supports using the [http://motp.sourceforge.net/ Mobile-OTP] algorithm instead of HOTP/OATH. In this case the PIN (if any) should be entered into the token when generating the one-time password and _not_ as a prefix to the HTTP password. Use token type "MOTP" instead of "HOTP".
 
