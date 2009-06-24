@@ -1,5 +1,5 @@
 
-Version 1.1.0
+Version 1.1.0 (r44) released 23 Jun 2009
 
     - Moved time interval and #digits configuration into users file
     - Fixed bug in time based token synchronization at large offsets
