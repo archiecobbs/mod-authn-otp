@@ -1,6 +1,8 @@
 #summary Wiki-fied version of the otptool man page
 #labels Featured
 
+The *mod-authn-otp* distribution includes a command line utility called *otptool* which performs various operations using one-time passwords. The man page is reproduced here:
+
 {{{
 OTPTOOL(1)                                          BSD General Commands Manual                                          OTPTOOL(1)
 
