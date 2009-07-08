@@ -23,6 +23,8 @@ that require more security than simple username/password authentication
 yet also don't require users to install special VPN software, and is
 compatible with software tokens that run on cell phones.
 
+Also included is otptool, a one-time password command line utility. 
+
 For configuration information and other details please see:
 
     http://mod-authn-otp.googlecode.com/
