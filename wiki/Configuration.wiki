@@ -70,5 +70,7 @@ This defines the maximum "linger time" during which a previously entered one-tim
 
 The default value for this directive is 600 seconds, i.e., ten minutes. This is probably too low for extensive browsing (forcing your users to enter a password every ten minutes may be annoying).
 
+Note that this is _not_ an idle time. It doesn't matter how active (or inactive) the user is during this time: the timer starts counting from the time the one-time password is first used and then continues to count up toward the limit. Once the linger time expires, the previously used one-time password is no longer accepted.
+
 See OneTimePasswords for more details about why a linger time is required for HTTP authentication.
  
