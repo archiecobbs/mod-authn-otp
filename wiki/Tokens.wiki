@@ -11,6 +11,7 @@ Note that the token key is not the same thing as the token ID, which is typicall
 
 === Hardware Tokens ===
 
+  * [http://www.authworks.com/authenex-akey-3600.asp Authenex's A-Key 3600] is compatible and has been successfully tested.
   * [http://www.aladdin.com/etoken/devices/pass.aspx Aladdin's eToken PASS] should work according to the description but has not actually been tested.
 
 === Software Tokens ===
