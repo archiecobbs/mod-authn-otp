@@ -5,9 +5,15 @@
 
 Any [http://www.ietf.org/rfc/rfc4226.txt RFC 4226] compatible one-time password generator from which you can access the token key should work with *mod_authn_otp*.
 
-You will need a token that is not tied to a specific vendor by way of proprietary design or withholding of information. For example, [http://www.verisign.com/authentication/consumer-authentication/identity-protection/index.html Verisign's VIP] tokens are not compatible because it is not possible to extract the token's key.
+Note that the _token key_ is not the same thing as the _token ID_, which is typically a alphanumeric string like MATM89382348. The token ID is simply a identifier for the token, like a serial number. The token key on the other hand is typically 16 to 20 bytes of random binary data looking something like "f136803ab9c241079ba0cc1b5d02ee7765df3421". This is the actual cryptographic secret on which the security of the token rests. The token key must be provided to you separately and securely by the token vendor.
 
-Note that the token key is not the same thing as the token ID, which is typically a alphanumeric string like MATM89382348. The token ID is simply a identifier for the token. The token key is typically 16 to 20 bytes of random binary data looking something like "f136803ab9c241079ba0cc1b5d02ee7765df3421".
+You will need a token that is not tied to a specific vendor by way of proprietary design or withholding of information. Of course, this means the token must be OATH-compliant. Many vendors do indeed sell "OATH-compliant" tokens, but they require you to also purchase their expensive, proprietary server-side software to use them. They won't give you the token keys unless you do.
+
+For example, [http://www.verisign.com/authentication/consumer-authentication/identity-protection/index.html Verisign's VIP] tokens are popular but are not compatible with *mod_authn_otp* because it is not possible to extract the token's key.
+
+Perhaps over time this "stay proprietary" strategy will evolve away, as it has done in so many other technology areas.
+
+In the meantime, when you call a vendor to inquire, tell them that you are using the open-source authentication solution *mod_authn_otp* and that you require token keys.
 
 === Hardware Tokens ===
 
@@ -18,4 +24,3 @@ Note that the token key is not the same thing as the token ID, which is typicall
 
   * [http://www.securethecloud.com/mobile-client-pledge/ Nordic Edge's Pledge] is an event based software token that runs on the iPhone and cell phones. Follow the instructions for a free profile, then enter the token key into your *mod_authn_otp* users file.
   * [http://itunes.apple.com/WebObjects/MZStore.woa/wa/viewSoftware?id=318414073&mt=8 Mobile-OTP on the iPhone] is an iPhone app implementing the older [http://motp.sourceforge.net/ Mobile-OTP] algorithm.
-
