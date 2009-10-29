@@ -46,22 +46,22 @@ The
 is the token's binary secret key and is specified as a hexadecimal string.
 .Pp
 If no
-.Ar otp
+.Ar password
 is given,
 .Nm
 generates the one-time password corresponding to the given key and target counter value
 and prints to standard output the counter followed by the decimal and hexadecimal one-time passwords.
 If
-.Ar otp
+.Ar password
 is given, then
 .Nm
 verifies that
-.Ar otp
+.Ar password
 is the correct one-time password for the given
 .Ar key
 and counter value.
 If so, it outputs the counter value.
-.Ar otp
+.Ar password
 may be either the decimal or hexadecimal one-time password.
 .Pp
 The target counter value is determined as follows: if the
@@ -79,7 +79,7 @@ flag.
 When both
 .Fl w
 and
-.Ar otp
+.Ar password
 are given,
 .Nm
 will search the entire range for a matching counter value,
@@ -95,11 +95,11 @@ flag;
 if neither flag is given, the default value is zero.
 .It Fl d
 Specify the required number of digits in the one-time password.
-Giving an
-.Ar otp
+Giving a
+.Ar password
 argument and specifying a different length here will result in no match being found (no search is performed).
 Otherwise, the default value is the length of
-.Ar otp ,
+.Ar password ,
 if given, or else six if not.
 .It Fl f
 Read the key from the file named
@@ -136,7 +136,7 @@ When
 is used, the window extends the given distance both before and after the target counter value;
 otherwise, the window extends forward of the target counter value.
 When both
-.Ar otp
+.Ar password
 and
 .Fl t
 are given, the search starts with the initial target counter and works away from it
@@ -148,14 +148,14 @@ exits with one of the following return values:
 .Bl -tag -width xxx
 .It 0
 The one-time password(s) was/were successfully generated, or
-.Ar otp
-matched (one of) the target counter value(s).
+.Ar password
+correctly matched the password generated using (one of) the target counter value(s).
 .It 1
 .Nm
 was invoked with invalid command line flags or parameters.
 .It 2
 The given
-.Ar otp
+.Ar password
 did not match any counter value(s) in the search window.
 .It 3
 A system error occurred.
