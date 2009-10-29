@@ -18,26 +18,26 @@ DESCRIPTION
 
      The key is the token's binary secret key and is specified as a hexadecimal string.
 
-     If no otp is given, otptool generates the one-time password corresponding to the given key and target counter value and prints
-     to standard output the counter followed by the decimal and hexadecimal one-time passwords.  If otp is given, then otptool ver-
-     ifies that otp is the correct one-time password for the given key and counter value.  If so, it outputs the counter value.
-     otp may be either the decimal or hexadecimal one-time password.
+     If no password is given, otptool generates the one-time password corresponding to the given key and target counter value and
+     prints to standard output the counter followed by the decimal and hexadecimal one-time passwords.  If password is given, then
+     otptool verifies that password is the correct one-time password for the given key and counter value.  If so, it outputs the
+     counter value.  password may be either the decimal or hexadecimal one-time password.
 
      The target counter value is determined as follows: if the -t flag is given, use the current time in seconds since the UNIX
      epoch divided by the configured time interval (default 30 seconds); otherwise, if the -c flag is given, use the given counter;
      otherwise, use the value zero.
 
-     In both cases, a range of target counter values may be specified using the -w flag.  When both -w and otp are given, otptool
-     will search the entire range for a matching counter value, starting with the target counter value and working away from it.
-     This mode can be used to resynchronize an unsychronized counter.
+     In both cases, a range of target counter values may be specified using the -w flag.  When both -w and password are given,
+     otptool will search the entire range for a matching counter value, starting with the target counter value and working away
+     from it.  This mode can be used to resynchronize an unsychronized counter.
 
 OPTIONS
      -c      Specify the starting target counter value for the one-time password generation or search.  This flag is incompatible
              with the -t flag; if neither flag is given, the default value is zero.
 
-     -d      Specify the required number of digits in the one-time password.  Giving an otp argument and specifying a different
+     -d      Specify the required number of digits in the one-time password.  Giving a password argument and specifying a different
              length here will result in no match being found (no search is performed).  Otherwise, the default value is the length
-             of otp, if given, or else six if not.
+             of password, if given, or else six if not.
 
      -f      Read the key from the file named key instead of parsing key as a hexadecimal string.
 
@@ -53,17 +53,18 @@ OPTIONS
 
      -w      Specify the width of a window of counter values within which to iterate when generating or searching for one-time
              passwords.  When -t is used, the window extends the given distance both before and after the target counter value;
-             otherwise, the window extends forward of the target counter value.  When both otp and -t are given, the search starts
-             with the initial target counter and works away from it in both directions.
+             otherwise, the window extends forward of the target counter value.  When both password and -t are given, the search
+             starts with the initial target counter and works away from it in both directions.
 
 RETURN VALUE
      otptool exits with one of the following return values:
 
-     0    The one-time password(s) was/were successfully generated, or otp matched (one of) the target counter value(s).
+     0    The one-time password(s) was/were successfully generated, or password correctly matched the password generated using (one
+          of) the target counter value(s).
 
      1    otptool was invoked with invalid command line flags or parameters.
 
-     2    The given otp did not match any counter value(s) in the search window.
+     2    The given password did not match any counter value(s) in the search window.
 
      3    A system error occurred.
 
