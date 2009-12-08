@@ -33,8 +33,8 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_PATH_PROG(STRIP, strip)
 AC_PATH_PROG(CP, cp)
-AC_PATH_PROG(APXS, apxs, "no", [/usr/sbin /usr/local/bin /usr/local/sbin /usr/local/apache/bin])
-AC_PATH_PROG(APXS2, apxs2, "no", [/usr/sbin /usr/local/bin /usr/local/sbin /usr/local/apache/bin])
+AC_PATH_PROG(APXS, apxs, "no", [/bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin /usr/local/apache/bin])
+AC_PATH_PROG(APXS2, apxs2, "no", [/bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin /usr/local/apache/bin])
 [test x"$APXS2" = "xno" -a x"$APXS" = "xno" && ] AC_MSG_ERROR([cannot find apxs or apxs2])
 [test x"$APXS2" != "xno" && APXS="$APXS2"]
 
