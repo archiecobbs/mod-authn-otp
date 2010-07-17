@@ -52,8 +52,8 @@ AC_SUBST(GCC_WARN_FLAGS)
 AC_SUBST(CFLAGS)
 
 # Check for required libraries
-AC_CHECK_LIB(ssl, EVP_sha1,,
-	[AC_MSG_ERROR([required library libssl missing])])
+AC_CHECK_LIB(crypto, EVP_sha1,,
+	[AC_MSG_ERROR([required library libcrypto missing])])
 
 # Check for required header files
 AC_HEADER_STDC
