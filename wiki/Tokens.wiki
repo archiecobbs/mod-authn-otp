@@ -20,6 +20,7 @@ In the meantime, when you call a vendor to inquire, tell them that you are using
   * [http://www.gooze.eu/ Gooze] sells the [http://www.gooze.eu/otp-c100-token-event-based c100 event based] and the [http://www.gooze.eu/otp-c200-token-time-based c200 time based] tokens which are compatible and have been tested. Note: The c200 should be configured for a 60 second interval.
   * [http://www.authworks.com/authenex-akey-3600.asp Authenex's A-Key 3600] is compatible and has been successfully tested.
   * [http://www.aladdin.com/etoken/devices/pass.aspx Aladdin's eToken PASS] should work according to the description but has not actually been tested.
+  * [http://onlinenoram.gemalto.com/ Gemalto's Ezio] time-based tokens should work but have not been tested.
 
 === Software Tokens ===
 
