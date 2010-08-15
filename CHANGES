@@ -1,4 +1,8 @@
 
+Version 1.1.1 (r65) released 15 Aug 2010
+
+    - Build fixes
+
 Version 1.1.0 (r44) released 23 Jun 2009
 
     - Moved time interval and #digits configuration into users file
