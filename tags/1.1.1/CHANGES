@@ -1,0 +1,18 @@
+
+Version 1.1.1 (r66) released 15 Aug 2010
+
+    - Build fixes
+
+Version 1.1.0 (r44) released 23 Jun 2009
+
+    - Moved time interval and #digits configuration into users file
+    - Fixed bug in time based token synchronization at large offsets
+    - Added support for the Mobile-OTP algorithm: http://motp.sourceforge.net/
+    - Added otptool(1) one-time password utility program.
+    - Accept either decimal or hexadecimal values (basic auth only).
+
+Version 1.0.0 (r10) released 14 Jun 2009
+
+    - Initial release
+
+$Id$
