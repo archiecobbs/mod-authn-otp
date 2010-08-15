@@ -19,7 +19,7 @@
 # $Id$
 #
 
-AC_INIT([mod_authn_otp Apache2 authentication module supporting one-time passwords], [1.1.0], [http://mod-auth-otp.googlecode.com/], [mod_authn_otp])
+AC_INIT([mod_authn_otp Apache2 authentication module supporting one-time passwords], [1.1.1], [http://mod-auth-otp.googlecode.com/], [mod_authn_otp])
 AC_CONFIG_AUX_DIR(scripts)
 AM_INIT_AUTOMAKE
 dnl AM_MAINTAINER_MODE
