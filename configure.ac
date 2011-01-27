@@ -57,8 +57,9 @@ AC_CHECK_LIB(crypto, EVP_sha1,,
 
 # Check for required header files
 AC_HEADER_STDC
-AC_CHECK_HEADERS(ctype.h err.h errno.h openssl/evp.h openssl/hmac.h openssl/md5.h stdio.h string.h time.h unistd.h, [],
+AC_CHECK_HEADERS(ctype.h errno.h openssl/evp.h openssl/hmac.h openssl/md5.h stdio.h string.h time.h unistd.h, [],
 	[AC_MSG_ERROR([required header file '$ac_header' not found])])
+AC_CHECK_HEADERS(err.h, [], [])
 
 # Generated files
 AC_CONFIG_FILES(Makefile)

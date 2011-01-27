@@ -19,13 +19,43 @@
  * $Id$
  */
 
+#include <sys/types.h>
+
 #include <ctype.h>
-#include <err.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+#ifdef HAVE_ERR_H
+#include <err.h>
+#else
+#define err(E, FMT...)          do {                                                \
+                                    int _esave = (errno);                           \
+                                    fprintf(stderr, "%s: ", PROG_NAME);             \
+                                    fprintf(stderr, FMT);                           \
+                                    fprintf(stderr, ": %s\n", strerror(_esave));    \
+                                    exit(E);                                        \
+                                } while (0)
+#define errx(E, FMT...)         do {                                                \
+                                    fprintf(stderr, "%s: ", PROG_NAME);             \
+                                    fprintf(stderr, FMT);                           \
+                                    fprintf(stderr, "\n");                          \
+                                    exit(E);                                        \
+                                } while (0)
+#define warn(FMT...)            do {                                                \
+                                    int _esave = (errno);                           \
+                                    fprintf(stderr, "%s: ", PROG_NAME);             \
+                                    fprintf(stderr, FMT);                           \
+                                    fprintf(stderr, ": %s\n", strerror(_esave));    \
+                                } while (0)
+#define warnx(FMT...)           do {                                                \
+                                    fprintf(stderr, "%s: ", PROG_NAME);             \
+                                    fprintf(stderr, FMT);                           \
+                                    fprintf(stderr, "\n");                          \
+                                } while (0)
+#endif
 
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -44,7 +74,7 @@
 #define DEFAULT_TIME_INTERVAL       30
 #define DEFAULT_WINDOW              0
 
-/* genotp.c */
+/* hotp.c */
 extern void         hotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen);
 
 /* motp.c */
