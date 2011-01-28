@@ -21,6 +21,7 @@ In the meantime, when you call a vendor to inquire, tell them that you are using
   * [http://www.authworks.com/authenex-akey-3600.asp Authenex's A-Key 3600] is compatible and has been successfully tested.
   * [http://www.aladdin.com/etoken/devices/pass.aspx Aladdin's eToken PASS] should work according to the description but has not actually been tested.
   * [http://onlinenoram.gemalto.com/ Gemalto's Ezio] time-based tokens should work but have not been tested.
+  * The [http://www.yubico.com/yubikey YubiKey] supports multiple authentication schemes and is OATH compatible.
 
 === Software Tokens ===
 
