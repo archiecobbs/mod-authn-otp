@@ -47,31 +47,33 @@
 module AP_MODULE_DECLARE_DATA authn_otp_module;
 
 /* Definitions related to users file */
-#define WHITESPACE              " \t\r\n\v"
-#define NEWFILE_SUFFIX          ".new"
-#define LOCKFILE_SUFFIX         ".lock"
-#define TIME_FORMAT             "%Y-%m-%dT%H:%M:%SL"
+#define WHITESPACE                      " \t\r\n\v"
+#define NEWFILE_SUFFIX                  ".new"
+#define LOCKFILE_SUFFIX                 ".lock"
+#define TIME_FORMAT                     "%Y-%m-%dT%H:%M:%SL"
 
 /* OTP counter algorithms */
-#define OTP_ALGORITHM_HOTP      1
-#define OTP_ALGORITHM_MOTP      2
+#define OTP_ALGORITHM_HOTP              1
+#define OTP_ALGORITHM_MOTP              2
 
 /* Default configuration settings */
-#define DEFAULT_NUM_DIGITS      6
-#define DEFAULT_MAX_OFFSET      4
-#define DEFAULT_MAX_LINGER      (10 * 60)   /* 10 minutes */
+#define DEFAULT_NUM_DIGITS              6
+#define DEFAULT_MAX_OFFSET              4
+#define DEFAULT_MAX_LINGER              (10 * 60)   /* 10 minutes */
+#define DEFAULT_LOGOUT_IP_CHANGE        0
 
 /* MobileOTP defaults */
-#define MOTP_TIME_INTERVAL      10
+#define MOTP_TIME_INTERVAL              10
 
 /* Buffer size for OTPs */
-#define OTP_BUF_SIZE            16
+#define OTP_BUF_SIZE                    16
 
 /* Per-directory configuration */
 struct otp_config {
-    char    *users_file;        /* Name of the users file */
-    int     max_offset;         /* Maximum allowed counter offset from expected value */
-    int     max_linger;         /* Maximum time for which the same OTP can be used repeatedly */
+    char    *users_file;                /* Name of the users file */
+    int     max_offset;                 /* Maximum allowed counter offset from expected value */
+    int     max_linger;                 /* Maximum time for which the same OTP can be used repeatedly */
+    int     logout_ip_change;           /* Auto-logout user if IP address changes */
 };
 
 /* User info structure */
@@ -86,6 +88,7 @@ struct otp_user {
     long            offset;             /* if event: next expected count; if time: time slew */
     char            last_otp[128];
     time_t          last_auth;
+    char            last_ip[128];
 };
 
 /* Internal functions */
@@ -261,6 +264,11 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
         tm.tm_isdst = -1;
         user->last_auth = mktime(&tm);
 
+        /* Read last used IP address (optional) */
+        if ((s = apr_strtok(NULL, WHITESPACE, &last)) == NULL)
+            goto found;
+        apr_snprintf(user->last_ip, sizeof(user->last_ip), "%s", s);
+
 found:
         /* We are not updating; return the user we found */
         AP_DEBUG_ASSERT(!update);
@@ -424,6 +432,7 @@ print_user(apr_file_t *file, const struct otp_user *user)
     if (*user->last_otp != '\0') {
         strftime(tbuf, sizeof(tbuf), TIME_FORMAT, localtime(&user->last_auth));
         apr_file_printf(file, " %-7s %s", user->last_otp, tbuf);
+        apr_file_printf(file, " %s", user->last_ip);
     }
     apr_file_printf(file, "\n");
 }
@@ -562,6 +571,13 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
     now = time(NULL);
     if (strcmp(otp_given, user->last_otp) == 0) {
 
+        /* Did user's IP address change? */
+        if (conf->logout_ip_change && *user->last_ip != '\0' && strcmp(user->last_ip, r->connection->remote_ip) != 0) {
+            ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the previous OTP"
+              " but from a different IP address (was %s, now %s)", user->username, user->last_ip, r->connection->remote_ip);
+            return AUTH_DENIED;
+        }
+
         /* Is it within the configured linger time? */
         if (now >= user->last_auth && now < user->last_auth + conf->max_linger) {
             ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "accepting reuse of OTP for \"%s\" within %d sec. linger time",
@@ -622,6 +638,7 @@ success:
     user->offset = user->time_interval == 0 ? counter + offset + 1 : user->offset + offset;
     apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", otp_given);
     user->last_auth = now;
+    apr_snprintf(user->last_ip, sizeof(user->last_ip), "%s", r->connection->remote_ip);
 
     /* Update user's record */
     find_update_user(r, conf->users_file, user, 1);
@@ -732,12 +749,15 @@ get_config(request_rec *r)
         conf->users_file = apr_pstrdup(r->pool, dir_conf->users_file);
     conf->max_offset = dir_conf->max_offset;
     conf->max_linger = dir_conf->max_linger;
+    conf->logout_ip_change = dir_conf->logout_ip_change;
 
     /* Apply defaults for any unset values */
     if (conf->max_offset == -1)
         conf->max_offset = DEFAULT_MAX_OFFSET;
     if (conf->max_linger == -1)
         conf->max_linger = DEFAULT_MAX_LINGER;
+    if (conf->logout_ip_change == -1)
+        conf->logout_ip_change = DEFAULT_LOGOUT_IP_CHANGE;
 
     /* Done */
     return conf;
@@ -754,6 +774,7 @@ create_authn_otp_dir_config(apr_pool_t *p, char *d)
     conf->users_file = NULL;
     conf->max_offset = -1;
     conf->max_linger = -1;
+    conf->logout_ip_change = -1;
     return conf;
 }
 
@@ -804,6 +825,11 @@ static const command_rec authn_otp_cmds[] =
         (void *)APR_OFFSETOF(struct otp_config, max_linger),
         OR_AUTHCFG,
         "maximum time (in seconds) for which a one-time password can be repeatedly used"),
+    AP_INIT_FLAG("OTPLogoutOnIPChange",
+        ap_set_flag_slot,
+        (void *)APR_OFFSETOF(struct otp_config, logout_ip_change),
+        OR_AUTHCFG,
+        "enable automatic logout of user if the user's IP address changes"),
     { NULL }
 };
 
