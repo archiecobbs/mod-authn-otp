@@ -70,25 +70,25 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 
 /* Per-directory configuration */
 struct otp_config {
-    char    *users_file;                /* Name of the users file */
-    int     max_offset;                 /* Maximum allowed counter offset from expected value */
-    int     max_linger;                 /* Maximum time for which the same OTP can be used repeatedly */
-    int     logout_ip_change;           /* Auto-logout user if IP address changes */
+    char                *users_file;            /* Name of the users file */
+    int                 max_offset;             /* Maximum allowed counter offset from expected value */
+    int                 max_linger;             /* Maximum time for which the same OTP can be used repeatedly */
+    int                 logout_ip_change;       /* Auto-logout user if IP address changes */
 };
 
 /* User info structure */
 struct otp_user {
-    int             algorithm;          /* one of OTP_ALGORITHM_* */
-    int             time_interval;      /* in seconds, or zero for event-based tokens */
-    int             num_digits;
-    char            username[128];
-    u_char          key[256];
-    int             keylen;
-    char            pin[128];
-    long            offset;             /* if event: next expected count; if time: time slew */
-    char            last_otp[128];
-    time_t          last_auth;
-    char            last_ip[128];
+    int                 algorithm;              /* one of OTP_ALGORITHM_* */
+    int                 time_interval;          /* in seconds, or zero for event-based tokens */
+    int                 num_digits;
+    char                username[128];
+    u_char              key[256];
+    int                 keylen;
+    char                pin[128];
+    long                offset;                 /* if event: next expected count; if time: time slew */
+    char                last_otp[128];
+    time_t              last_auth;
+    char                last_ip[128];
 };
 
 /* Internal functions */
