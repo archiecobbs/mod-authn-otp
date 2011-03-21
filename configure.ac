@@ -42,7 +42,7 @@ AC_PATH_PROG(APXS2, apxs2, "no", [/bin /sbin /usr/bin /usr/sbin /usr/local/bin /
 [GCC_WARN_FLAGS=""
 CFLAGS=""
 if test x"$GCC" = "xyes"; then
-    GCC_WARN_FLAGS="-O -Wall -Waggregate-return -Wcast-align -Wchar-subscripts -Wcomment -Wformat \
+    GCC_WARN_FLAGS="-Wall -Waggregate-return -Wcast-align -Wchar-subscripts -Wcomment -Wformat \
         -Wimplicit -Wmissing-declarations -Wmissing-prototypes -Wnested-externs -Wno-long-long \
         -Wparentheses -Wpointer-arith -Wredundant-decls -Wreturn-type -Wswitch -Wtrigraphs \
         -Wuninitialized -Wunused -Wwrite-strings -Wshadow -Wstrict-prototypes -Wcast-qual"
