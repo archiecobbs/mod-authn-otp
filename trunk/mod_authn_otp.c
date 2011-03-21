@@ -68,6 +68,14 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 /* Buffer size for OTPs */
 #define OTP_BUF_SIZE                    16
 
+/* Other buffer sizes */
+#define MAX_USERNAME                    128
+#define MAX_PIN                         128
+#define MAX_KEY                         256
+#define MAX_OTP                         128
+#define MAX_IP                          128
+#define MAX_TOKEN                       128
+
 /* Per-directory configuration */
 struct otp_config {
     char                *users_file;            /* Name of the users file */
@@ -81,14 +89,14 @@ struct otp_user {
     int                 algorithm;              /* one of OTP_ALGORITHM_* */
     int                 time_interval;          /* in seconds, or zero for event-based tokens */
     int                 num_digits;
-    char                username[128];
-    u_char              key[256];
+    char                username[MAX_USERNAME];
+    u_char              key[MAX_KEY];
     int                 keylen;
-    char                pin[128];
+    char                pin[MAX_PIN];
     long                offset;                 /* if event: next expected count; if time: time slew */
-    char                last_otp[128];
+    char                last_otp[MAX_OTP];
     time_t              last_auth;
-    char                last_ip[128];
+    char                last_ip[MAX_IP];
 };
 
 /* Internal functions */
@@ -329,7 +337,7 @@ fail:
 static int
 parse_token_type(const char *type, struct otp_user *tokinfo)
 {
-    char tokbuf[128];
+    char tokbuf[MAX_TOKEN];
     char *last;
     char *eptr;
     char *t;
@@ -393,7 +401,7 @@ print_user(apr_file_t *file, const struct otp_user *user)
     const char *alg;
     char cbuf[64];
     char nbuf[64];
-    char tbuf[128];
+    char tbuf[MAX_TOKEN];
     int i;
 
     /* Format token type sub-fields */
