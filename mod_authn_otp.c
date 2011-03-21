@@ -43,8 +43,16 @@
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
 
+/* Apache backward-compat */
+#ifndef AUTHN_PROVIDER_VERSION
+#define AUTHN_PROVIDER_VERSION "0"
+#endif
+
 /* Module definition */
 module AP_MODULE_DECLARE_DATA authn_otp_module;
+
+/* Our unique authentication provider name */
+#define OTP_AUTHN_PROVIDER_NAME         "OTP"
 
 /* Definitions related to users file */
 #define WHITESPACE                      " \t\r\n\v"
@@ -812,7 +820,7 @@ static const authn_provider authn_otp_provider =
 static void
 register_hooks(apr_pool_t *p)
 {
-    ap_register_provider(p, AUTHN_PROVIDER_GROUP, "OTP", "0", &authn_otp_provider);
+    ap_register_provider(p, AUTHN_PROVIDER_GROUP, OTP_AUTHN_PROVIDER_NAME, AUTHN_PROVIDER_VERSION, &authn_otp_provider);
 }
 
 /* Configuration directives */
@@ -833,7 +841,7 @@ static const command_rec authn_otp_cmds[] =
         (void *)APR_OFFSETOF(struct otp_config, max_linger),
         OR_AUTHCFG,
         "maximum time (in seconds) for which a one-time password can be repeatedly used"),
-    AP_INIT_FLAG("OTPLogoutOnIPChange",
+    AP_INIT_FLAG("OTPAuthLogoutOnIPChange",
         ap_set_flag_slot,
         (void *)APR_OFFSETOF(struct otp_config, logout_ip_change),
         OR_AUTHCFG,
