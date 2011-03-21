@@ -90,6 +90,7 @@ struct otp_config {
     int                 max_offset;             /* Maximum allowed counter offset from expected value */
     int                 max_linger;             /* Maximum time for which the same OTP can be used repeatedly */
     int                 logout_ip_change;       /* Auto-logout user if IP address changes */
+    authn_provider_list *provlist;              /* Authorization providers for checking PINs */
 };
 
 /* User info structure */
@@ -114,10 +115,13 @@ static void         motp(const u_char *key, size_t keylen, const char *pin, u_lo
 static int          parse_token_type(const char *type, struct otp_user *tokinfo);
 static void         print_user(apr_file_t *file, const struct otp_user *user);
 static void         printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digits);
+static authn_status authn_otp_check_pin(request_rec *r, struct otp_config *conf, struct otp_user *user, const char *pin);
 static authn_status authn_otp_check_password(request_rec *r, const char *username, const char *password);
 static authn_status authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm, char **rethash);
 static void         *create_authn_otp_dir_config(apr_pool_t *p, char *d);
 static void         *merge_authn_otp_dir_config(apr_pool_t *p, void *base_conf, void *new_conf);
+static const char   *add_authn_provider(cmd_parms *cmd, void *config, const char *provider_name);
+static void         copy_provider_list(apr_pool_t *p, authn_provider_list **dstp, authn_provider_list *src);
 static struct       otp_config *get_config(request_rec *r);
 static void         register_hooks(apr_pool_t *p);
 
@@ -538,6 +542,47 @@ printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digi
 }
 
 /*
+ * Verify PIN.
+ */
+static authn_status
+authn_otp_check_pin(request_rec *r, struct otp_config *const conf, struct otp_user *const user, const char *pin)
+{
+    authn_status status = AUTH_USER_NOT_FOUND;
+    authn_provider_list *pentry;
+
+    /* If we're not using authn providers, just compare with what's given in the users file */
+    if (conf->provlist == NULL) {
+        if (strcmp(pin, user->pin) != 0) {
+            ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" PIN does not match value in users file", user->username);
+            return AUTH_DENIED;
+        }
+        return AUTH_GRANTED;
+    }
+
+    /* Try each configured authn provider until one recognizes this user */
+    for (pentry = conf->provlist; pentry != NULL; pentry = pentry->next) {
+        if ((status = pentry->provider->check_password(r, user->username, pin)) != AUTH_USER_NOT_FOUND)
+            break;
+    }
+
+    /* Check result for logging purposes */
+    switch (status) {
+    case AUTH_DENIED:
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" incorrect PIN according to PIN authenticator \"%s\"",
+          user->username, pentry->provider_name);
+        break;
+    case AUTH_USER_NOT_FOUND:
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" not known by any configured PIN authenticator", user->username);
+        break;
+    default:
+        break;
+    }
+
+    /* Done */
+    return status;
+}
+
+/*
  * HTTP basic authentication
  */
 static authn_status
@@ -569,11 +614,23 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
 
     /* Check PIN prefix (if appropriate) */
     if (user->algorithm != OTP_ALGORITHM_MOTP) {
-        if (strncmp(otp_given, user->pin, strlen(user->pin)) != 0) {
-            ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" PIN does not match", user->username);
+        char pinbuf[MAX_PIN];
+        int pinlen;
+
+        /* Determine the length of the PIN that the user supplied */
+        pinlen = strlen(otp_given) - user->num_digits;
+        if (pinlen < 0) {
+            ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided a too-short OTP", user->username);
             return AUTH_DENIED;
         }
-        otp_given += strlen(user->pin);
+
+        /* Extract the PIN from the password given */
+        apr_snprintf(pinbuf, sizeof(pinbuf), "%*s", pinlen, otp_given);
+        otp_given += pinlen;
+
+        /* Check the PIN */
+        if ((status = authn_otp_check_pin(r, conf, user, pinbuf)) != AUTH_GRANTED)
+            return status;
     }
 
     /* Check OTP length */
@@ -766,6 +823,7 @@ get_config(request_rec *r)
     conf->max_offset = dir_conf->max_offset;
     conf->max_linger = dir_conf->max_linger;
     conf->logout_ip_change = dir_conf->logout_ip_change;
+    copy_provider_list(r->pool, &conf->provlist, dir_conf->provlist);
 
     /* Apply defaults for any unset values */
     if (conf->max_offset == -1)
@@ -791,6 +849,7 @@ create_authn_otp_dir_config(apr_pool_t *p, char *d)
     conf->max_offset = -1;
     conf->max_linger = -1;
     conf->logout_ip_change = -1;
+    conf->provlist = NULL;
     return conf;
 }
 
@@ -807,7 +866,61 @@ merge_authn_otp_dir_config(apr_pool_t *p, void *base_conf, void *new_conf)
         conf->users_file = apr_pstrdup(p, conf1->users_file);
     conf->max_offset = conf2->max_offset != -1 ? conf2->max_offset : conf1->max_offset;
     conf->max_linger = conf2->max_linger != -1 ? conf2->max_linger : conf1->max_linger;
+    copy_provider_list(p, &conf->provlist, conf2->provlist != NULL ? conf2->provlist : conf1->provlist);
     return conf;
+}
+
+/*
+ * This code is more-or-less copied from mod_auth_basic.c
+ */
+static const char *
+add_authn_provider(cmd_parms *cmd, void *config, const char *provider_name)
+{
+    struct otp_config *const conf = (struct otp_config *)config;
+    authn_provider_list *pentry;
+    authn_provider_list *last;
+
+    /* Sanity check */
+    if (strcmp(provider_name, OTP_AUTHN_PROVIDER_NAME))
+        return apr_psprintf(cmd->pool, "Invalid recursive Authn provider: %s", provider_name);
+
+    /* Create new provider list entry */
+    pentry = apr_pcalloc(cmd->pool, sizeof(*pentry));
+    pentry->provider_name = apr_pstrdup(cmd->pool, provider_name);
+
+    /* Lookup and cache the actual provider now */
+    pentry->provider = ap_lookup_provider(AUTHN_PROVIDER_GROUP, pentry->provider_name, AUTHN_PROVIDER_VERSION);
+    if (pentry->provider == NULL)
+        return apr_psprintf(cmd->pool, "Unknown Authn provider: %s", pentry->provider_name);
+
+    /* Verify this authentication provider can check plain passwords */
+    if (pentry->provider->check_password == NULL) {
+        return apr_psprintf(cmd->pool,
+          "The '%s' Authn provider doesn't support plaintext password checks", pentry->provider_name);
+    }
+
+    /* Add it to the end of the list */
+    if (conf->provlist == NULL)
+        conf->provlist = pentry;
+    else {
+        for (last = conf->provlist; last->next != NULL; last = last->next)
+            ;
+        last->next = pentry;
+    }
+
+    /* Done */
+    return NULL;
+}
+
+static void
+copy_provider_list(apr_pool_t *p, authn_provider_list **dstp, authn_provider_list *src)
+{
+    while (src != NULL) {
+        *dstp = apr_pcalloc(p, sizeof(**dstp));
+        (*dstp)->provider_name = apr_pstrdup(p, src->provider_name);
+        dstp = &(*dstp)->next;
+        src = src->next;
+    }
 }
 
 /* Authorization provider information */
@@ -846,6 +959,11 @@ static const command_rec authn_otp_cmds[] =
         (void *)APR_OFFSETOF(struct otp_config, logout_ip_change),
         OR_AUTHCFG,
         "enable automatic logout of user if the user's IP address changes"),
+    AP_INIT_ITERATE("OTPAuthPINAuthProvider",
+        add_authn_provider,
+        NULL,
+        OR_AUTHCFG,
+        "specify auth provider(s) to be used for PIN verification for a directory or location"),
     { NULL }
 };
 
