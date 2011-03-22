@@ -59,6 +59,8 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 #define NEWFILE_SUFFIX                  ".new"
 #define LOCKFILE_SUFFIX                 ".lock"
 #define TIME_FORMAT                     "%Y-%m-%dT%H:%M:%SL"
+#define PIN_EXTERNAL                    "+"
+#define PIN_NONE                        "-"
 
 /* OTP counter algorithms */
 #define OTP_ALGORITHM_HOTP              1
@@ -69,6 +71,11 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 #define DEFAULT_MAX_OFFSET              4
 #define DEFAULT_MAX_LINGER              (10 * 60)   /* 10 minutes */
 #define DEFAULT_LOGOUT_IP_CHANGE        0
+
+/* PIN configuration */
+#define PIN_CONFIG_LITERAL              0
+#define PIN_CONFIG_NONE                 1           /* User has no PIN */
+#define PIN_CONFIG_EXTERNAL             2           /* PIN must be gotten from OTPAuthPINAuthProvider */
 
 /* MobileOTP defaults */
 #define MOTP_TIME_INTERVAL              10
@@ -101,6 +108,7 @@ struct otp_user {
     char                username[MAX_USERNAME];
     u_char              key[MAX_KEY];
     int                 keylen;
+    int                 pincfg;                 /* one of PIN_CONFIG_* */
     char                pin[MAX_PIN];
     long                offset;                 /* if event: next expected count; if time: time slew */
     char                last_otp[MAX_OTP];
@@ -116,6 +124,7 @@ static int          parse_token_type(const char *type, struct otp_user *tokinfo)
 static void         print_user(apr_file_t *file, const struct otp_user *user);
 static void         printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digits);
 static authn_status authn_otp_check_pin(request_rec *r, struct otp_config *conf, struct otp_user *user, const char *pin);
+static authn_status authn_otp_check_pin_external(request_rec *r, struct otp_config *const conf, const char *user, const char *pin);
 static authn_status authn_otp_check_password(request_rec *r, const char *username, const char *password);
 static authn_status authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm, char **rethash);
 static void         *create_authn_otp_dir_config(apr_pool_t *p, char *d);
@@ -230,13 +239,19 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
         user->time_interval = tokinfo.time_interval;
         user->num_digits = tokinfo.num_digits;
 
-        /* Read PIN */
+        /* Read PIN and decode special values */
         if ((s = apr_strtok(NULL, WHITESPACE, &last)) == NULL) {
             apr_snprintf(invalid_reason, sizeof(invalid_reason), "missing PIN field");
             goto invalid;
         }
-        if (strcmp(s, "-") == 0)
+        if (strcmp(s, PIN_NONE) == 0) {
             *s = '\0';
+            user->pincfg = PIN_CONFIG_NONE;
+        } else if (strcmp(s, PIN_EXTERNAL) == 0) {
+            *s = '\0';
+            user->pincfg = PIN_CONFIG_EXTERNAL;
+        } else
+            user->pincfg = PIN_CONFIG_LITERAL;
         apr_snprintf(user->pin, sizeof(user->pin), "%s", s);
 
         /* Read key */
@@ -410,6 +425,7 @@ parse_token_type(const char *type, struct otp_user *tokinfo)
 static void
 print_user(apr_file_t *file, const struct otp_user *user)
 {
+    const char *pinstr = NULL;
     const char *alg;
     char cbuf[64];
     char nbuf[64];
@@ -425,8 +441,7 @@ print_user(apr_file_t *file, const struct otp_user *user)
         alg = "MOTP";
         break;
     default:
-        alg = "???";
-        break;
+        abort();
     }
     if (user->time_interval == 0)
         apr_snprintf(cbuf, sizeof(cbuf), "/E");
@@ -444,8 +459,23 @@ print_user(apr_file_t *file, const struct otp_user *user)
     }
     apr_snprintf(tbuf, sizeof(tbuf), "%s%s%s", alg, cbuf, nbuf);
 
+    /* Get PIN representation */
+    switch (user->pincfg) {
+    case PIN_CONFIG_LITERAL:
+        pinstr = user->pin;
+        break;
+    case PIN_CONFIG_NONE:
+        pinstr = PIN_NONE;
+        break;
+    case PIN_CONFIG_EXTERNAL:
+        pinstr = PIN_EXTERNAL;
+        break;
+    default:
+        abort();
+    }
+
     /* Print line in users file */
-    apr_file_printf(file, "%-7s %-13s %-7s ", tbuf, user->username, *user->pin == '\0' ? "-" : user->pin);
+    apr_file_printf(file, "%-7s %-13s %-7s ", tbuf, user->username, pinstr);
     for (i = 0; i < user->keylen; i++)
         apr_file_printf(file, "%02x", user->key[i]);
     apr_file_printf(file, " %-7ld", user->offset);
@@ -541,44 +571,82 @@ printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digi
 }
 
 /*
- * Verify PIN.
+ * Verify PIN using an external authn provider configured via "OTPAuthPINAuthProvider".
  */
 static authn_status
-authn_otp_check_pin(request_rec *r, struct otp_config *const conf, struct otp_user *const user, const char *pin)
+authn_otp_check_pin_external(request_rec *r, struct otp_config *const conf, const char *username, const char *pin)
 {
-    authn_status status = AUTH_USER_NOT_FOUND;
     authn_provider_list *pentry;
+    authn_status status;
 
-    /* If we're not using authn providers, just compare with what's given in the users file */
-    if (conf->provlist == NULL) {
-        if (strcmp(pin, user->pin) != 0) {
-            ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" PIN does not match value in users file", user->username);
-            return AUTH_DENIED;
-        }
-        return AUTH_GRANTED;
+    /* Verify that at least one authn provider is configured */
+    if ((pentry = conf->provlist) == NULL) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r,
+          "user \"%s\" PIN to be verified externally but no \"OTPAuthPINAuthProvider\" was configured", username);
+        return AUTH_DENIED;
     }
 
-    /* Try each configured authn provider until one recognizes this user */
-    for (pentry = conf->provlist; pentry != NULL; pentry = pentry->next) {
-        if ((status = pentry->provider->check_password(r, user->username, pin)) != AUTH_USER_NOT_FOUND)
+    /* Try each configured authn provider until we find one that recognizes this user */
+    do {
+        if ((status = pentry->provider->check_password(r, username, pin)) != AUTH_USER_NOT_FOUND)
             break;
-    }
+        pentry = pentry->next;
+    } while (pentry != NULL);
 
-    /* Check result for logging purposes */
+    /* Check result */
     switch (status) {
+    case AUTH_GRANTED:
+        ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "user \"%s\" PIN successfully validated by auth provider \"%s\"",
+          username, pentry->provider_name);
+        break;
     case AUTH_DENIED:
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" incorrect PIN according to PIN authenticator \"%s\"",
-          user->username, pentry->provider_name);
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" gave incorrect PIN according to PIN auth provider \"%s\"",
+          username, pentry->provider_name);
         break;
     case AUTH_USER_NOT_FOUND:
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" not known by any configured PIN authenticator", user->username);
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" is not known by any configured PIN auth provider", username);
         break;
+    case AUTH_GENERAL_ERROR:                        /* assume the auth provider logged something interesting */
+        break;
+    case AUTH_USER_FOUND:
     default:
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r,
+          "PIN auth provider \"%s\" returned unexpected value %d for user \"%s\"; treating as AUTH_DENIED",
+            pentry->provider_name, status, username);
+        status = AUTH_DENIED;
         break;
     }
 
     /* Done */
     return status;
+}
+
+/*
+ * Verify PIN.
+ */
+static authn_status
+authn_otp_check_pin(request_rec *r, struct otp_config *const conf, struct otp_user *const user, const char *pin)
+{
+    switch (user->pincfg) {
+    case PIN_CONFIG_NONE:                               /* User has no PIN, so provided PIN must be the empty string */
+        if (*pin != '\0') {
+            ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r,
+              "user \"%s\" supplied a PIN but none is configured in the users file", user->username);
+            return AUTH_DENIED;
+        }
+        return AUTH_GRANTED;
+    case PIN_CONFIG_EXTERNAL:                           /* User's PIN must be verified externally via an OTPAuthPINAuthProvider */
+        return authn_otp_check_pin_external(r, conf, user->username, pin);
+    case PIN_CONFIG_LITERAL:                            /* User's PIN was given explicitly in the users file */
+        if (strcmp(pin, user->pin) != 0) {
+            ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" PIN does not match value in users file", user->username);
+            return AUTH_DENIED;
+        }
+        return AUTH_GRANTED;
+    default:                                            /* This should never happen */
+        abort();
+        return AUTH_DENIED;
+    }
 }
 
 /*
@@ -747,6 +815,17 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
     if ((status = find_update_user(r, conf->users_file, user, 0)) != AUTH_USER_FOUND)
         return status;
 
+    /* The user's PIN must be known to us */
+    switch (user->pincfg) {
+    case PIN_CONFIG_NONE:
+    case PIN_CONFIG_LITERAL:
+        break;
+    default:
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
+          "user \"%s\" has an externally verified PIN which is not compatible with digest authentication", user->username);
+        return AUTH_USER_NOT_FOUND;
+    }
+
     /* Determine the expected OTP, assuming OTP reuse if we are within the linger time */
     now = time(NULL);
     if (now >= user->last_auth && now < user->last_auth + conf->max_linger) {
@@ -880,7 +959,7 @@ add_authn_provider(cmd_parms *cmd, void *config, const char *provider_name)
     authn_provider_list *last;
 
     /* Sanity check */
-    if (strcmp(provider_name, OTP_AUTHN_PROVIDER_NAME))
+    if (strcmp(provider_name, OTP_AUTHN_PROVIDER_NAME) == 0)
         return apr_psprintf(cmd->pool, "Invalid recursive Authn provider: %s", provider_name);
 
     /* Create new provider list entry */
