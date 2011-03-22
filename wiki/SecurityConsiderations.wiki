@@ -20,6 +20,8 @@ One-time passwords are, as the name implies, supposed to only be used once. Conf
 
 Therefore, it is recommended that when a non-zero maximum linger time is configured, *mod_authn_otp* only be used with SSL-encrypted web sites. This will protect you from someone sniffing the one-time password off the network and re-using it.
 
+It is also recommeded to set the {{{OTPAuthLogoutOnIPChange}}} directive to {{{On}}} in all cases unless it causes problems.
+
 == PINs ==
 
 The use of PINs is strongly suggested; without them you only have "one-factor" authentication. Note that user PINs don't have to be numeric; any whitespace-free password can be used as a PIN.
@@ -27,6 +29,8 @@ The use of PINs is strongly suggested; without them you only have "one-factor" a
 More subtly, the use of PINs helps prevent denial-of-service attacks. This is because *mod_authn_otp* first verifies the user's PIN before examining the one-time password. Since the latter operation can be time-consuming (and, with digest authentication, cause event based tokens to get out of sync), we want to prevent attackers from forcing us to perform it. Using PINs will do this because we assume attackers don't know users' PINs.
 
 Many software tokens themselves require the users to enter a PIN to generate a new one-time password. While this increases security, it's not a substitute for requiring the PIN to be entered as part of the HTTP password.
+
+For best security, don't store your PINs in the [UsersFile] directly. Instead, set them to {{{+}}} and configure an {{{OTPAuthPINAuthProvider}}} (see [Configuration] for details).
 
 == Logout ==
 

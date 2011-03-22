@@ -43,6 +43,8 @@ Finally, configure the *mod_authn_otp* specific directives:
 || *OTPAuthUsersFile* || File ||  _N/A_  || Yes || Specifies the users file containing user, PIN, and token information ||
 || *OTPAuthMaxOffset* || Number || 4 || No || Maximum allowed offset from the expected token counter value ||
 || *OTPAuthMaxLinger* || Number || 600 || No || Maximum allowed linger time in seconds ||
+|| *OTPAuthLogoutOnIPChange* || Boolean || Off || No || Auto-logout user if their IP address changes ||
+|| *OTPAuthPINAuthProvider* || List || Empty || No || One or more [http://httpd.apache.org/docs/2.2/howto/auth.html authentication providers] to be used for external PIN verification ||
 
 A detailed description of each directive follows.
 
@@ -73,4 +75,30 @@ The default value for this directive is 600 seconds, i.e., ten minutes. This is 
 Note that this is _not_ an idle time. It doesn't matter how active (or inactive) the user is during this time: the timer starts counting from the time the one-time password is first used and then continues to count up toward the limit. Once the linger time expires, the previously used one-time password is no longer accepted.
 
 See OneTimePasswords for more details about why a linger time is required for HTTP authentication.
- 
+
+=== OTPAuthLogoutOnIPChange ===
+
+This option is an extra security safeguard that will refuse to allow re-use of a one-time password if the IP address from which the new request originates changes. This would prevent (for example) someone sniffing your password from an unencrypted HTTP request and reusing it.
+
+Specify this setting as either {{{On}}} or {{{Off}}}. While the default value is {{{Off}}} for backward-compatibility, it is strongly recommended to eanble this setting unless you have a reason not to (e.g., requests are going through a proxy farm).
+
+=== OTPAuthPINAuthProvider ===
+
+This directive configures the [http://httpd.apache.org/docs/2.2/howto/auth.html authentication provider] list for external PIN verification. External PIN verification applies to any user who's PIN is set to {{{+}}} in the [UsersFile].
+
+For example, to have all your PINs stored in {{{htpasswd}}}-style encrypted form in the file {{{/etc/pins}}} instead of in plaintext in the [UsersFile], you set all the PINs to {{{+}}} in the [UsersFile] and then configure Apache like this:
+{{{
+<Directory "/protected/stuff">
+    AuthType basic
+    AuthName "My Protected Area"
+    AuthBasicProvider OTP
+    Require valid-user
+
+    OTPAuthUsersFile "/etc/otp-users.txt"
+    OTPAuthPINAuthProvider file
+    AuthUserFile "/etc/pins"
+</Directory>
+}}}
+This can get a little confusing. Here the {{{AuthUserFile}}} directive is used to configure the {{{file}}} authentication provider, which is configured via {{{OTPAuthPINAuthProvider}}} as the external verification mechanism for PINs. The {{{file}}} authentication provider is _not_ used for HTTP Basic password verification; we've specified {{{OTP}} for that instead via the {{{AuthBasicProvider}}} directive. Note that we could have chosen any other Apache authentication provider besides {{{file}}} for PIN verification.
+
+*Note:* External PIN verification is not compatible with digest authentication. Users whose PINs are set to {{{+}}} in the [UsersFile] will not be able to authenticate using digest authentication.

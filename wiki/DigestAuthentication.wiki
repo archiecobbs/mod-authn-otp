@@ -45,3 +45,7 @@ Manual synchronization is still possible, of course. This would mean editing the
 
 When doing HTTP basic authentication, *mod_authn_otp* will accept either the decimal or hexadecimal one-time password. With digest authentication, however, it must choose which format ahead of time. For HOTP/OATH, decimal is assumed, while for Mobile-OTP, hexadecimal is assumed.
 
+== External PIN verification ==
+
+Digest authentication is not compatible with external PIN verification. Users whose PINs are set to {{{+}}} in the [UsersFile] will not be able to authenticate using digest authentication.
+
