@@ -1,9 +1,9 @@
 
-Version 1.1.2
+Version 1.1.2 (r86) released 22 Mar 2011
 
-    - Build fixes for Solaris
-    - Added "OTPAuthLogoutOnIPChange" flag to log out on IP address change
     - Added "OTPAuthPINAuthProvider" to allow alternate verification of PINs
+    - Added "OTPAuthLogoutOnIPChange" flag to auto-logout on IP address change
+    - Build fixes for Solaris
 
 Version 1.1.1 (r66) released 15 Aug 2010
 
