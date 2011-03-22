@@ -946,6 +946,7 @@ merge_authn_otp_dir_config(apr_pool_t *p, void *base_conf, void *new_conf)
         conf->users_file = apr_pstrdup(p, conf1->users_file);
     conf->max_offset = conf2->max_offset != -1 ? conf2->max_offset : conf1->max_offset;
     conf->max_linger = conf2->max_linger != -1 ? conf2->max_linger : conf1->max_linger;
+    conf->logout_ip_change = conf2->logout_ip_change != -1 ? conf2->logout_ip_change : conf1->logout_ip_change;
     copy_provider_list(p, &conf->provlist, conf2->provlist != NULL ? conf2->provlist : conf1->provlist);
     return conf;
 }
