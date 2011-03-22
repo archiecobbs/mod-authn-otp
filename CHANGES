@@ -1,5 +1,5 @@
 
-Version 1.1.2 (r86) released 22 Mar 2011
+Version 1.1.2 (r87) released 22 Mar 2011
 
     - Added "OTPAuthPINAuthProvider" to allow alternate verification of PINs
     - Added "OTPAuthLogoutOnIPChange" flag to auto-logout on IP address change
