@@ -4,7 +4,8 @@
 
 In a nutshell, for best security:
   * Only use *mod_authn_otp* with SSL-encrypted web sites when a non-zero maximum linger time is configured.
-  * Always use PINs.
+  * Set the {{{OTPAuthLogoutOnIPChange}}} directive to {{{On}}}.
+  * Always use PINs and verify them externally using {{{OTPAuthPINAuthProvider}}}.
 
 The security of one-time passwords themselves is well understood; see [http://www.ietf.org/rfc/rfc4226.txt RFC 4226] for a discussion. When used for HTTP authentication, however, some additional security concerns arise.
 
