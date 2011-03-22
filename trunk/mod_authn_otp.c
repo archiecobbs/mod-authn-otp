@@ -826,9 +826,11 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
         return AUTH_USER_NOT_FOUND;
     }
 
-    /* Determine the expected OTP, assuming OTP reuse if we are within the linger time */
+    /* Determine the expected OTP, assuming OTP reuse if we are within the linger time and IP has not changed */
     now = time(NULL);
-    if (now >= user->last_auth && now < user->last_auth + conf->max_linger) {
+    if (now >= user->last_auth
+      && now < user->last_auth + conf->max_linger
+      && (!conf->logout_ip_change || *user->last_ip == '\0' || strcmp(user->last_ip, r->connection->remote_ip) == 0)) {
         ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r,
           "generating digest hash for \"%s\" assuming reuse of OTP within %d sec. linger time",
           user->username, conf->max_linger);
