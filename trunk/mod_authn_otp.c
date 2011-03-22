@@ -451,8 +451,7 @@ print_user(apr_file_t *file, const struct otp_user *user)
     apr_file_printf(file, " %-7ld", user->offset);
     if (*user->last_otp != '\0') {
         strftime(tbuf, sizeof(tbuf), TIME_FORMAT, localtime(&user->last_auth));
-        apr_file_printf(file, " %-7s %s", user->last_otp, tbuf);
-        apr_file_printf(file, " %s", user->last_ip);
+        apr_file_printf(file, " %-7s %s %s", user->last_otp, tbuf, user->last_ip);
     }
     apr_file_printf(file, "\n");
 }
@@ -625,7 +624,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
         }
 
         /* Extract the PIN from the password given */
-        apr_snprintf(pinbuf, sizeof(pinbuf), "%*s", pinlen, otp_given);
+        apr_snprintf(pinbuf, sizeof(pinbuf), "%.*s", pinlen, otp_given);
         otp_given += pinlen;
 
         /* Check the PIN */
@@ -858,7 +857,7 @@ merge_authn_otp_dir_config(apr_pool_t *p, void *base_conf, void *new_conf)
 {
     struct otp_config *const conf1 = base_conf;
     struct otp_config *const conf2 = new_conf;
-    struct otp_config *conf = apr_palloc(p, sizeof(struct otp_config));
+    struct otp_config *conf = apr_pcalloc(p, sizeof(struct otp_config));
 
     if (conf2->users_file != NULL)
         conf->users_file = apr_pstrdup(p, conf2->users_file);
@@ -918,6 +917,7 @@ copy_provider_list(apr_pool_t *p, authn_provider_list **dstp, authn_provider_lis
     while (src != NULL) {
         *dstp = apr_pcalloc(p, sizeof(**dstp));
         (*dstp)->provider_name = apr_pstrdup(p, src->provider_name);
+        (*dstp)->provider = src->provider;
         dstp = &(*dstp)->next;
         src = src->next;
     }
