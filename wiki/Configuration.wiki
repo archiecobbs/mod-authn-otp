@@ -89,14 +89,14 @@ This directive configures the [http://httpd.apache.org/docs/2.2/howto/auth.html 
 For example, to have all your PINs stored in {{{htpasswd}}}-style encrypted form in the file {{{/etc/pins}}} instead of in plaintext in the [UsersFile], you set all the PINs to {{{+}}} in the [UsersFile] and then configure Apache like this:
 {{{
 <Directory "/protected/stuff">
-    AuthType 				basic
-    AuthName 				"My Protected Area"
-    AuthBasicProvider 		OTP
-    Require 				valid-user
+    AuthType                basic
+    AuthName                "My Protected Area"
+    AuthBasicProvider       OTP
+    Require                 valid-user
 
-    OTPAuthUsersFile 		"/etc/otp-users.txt"
-    OTPAuthPINAuthProvider 	file
-    AuthUserFile 			"/etc/pins"
+    OTPAuthUsersFile        "/etc/otp-users.txt"
+    OTPAuthPINAuthProvider  file
+    AuthUserFile            "/etc/pins"
 </Directory>
 }}}
 This can get a little confusing. Here the {{{AuthUserFile}}} directive is used to configure the {{{file}}} authentication provider, which is configured via {{{OTPAuthPINAuthProvider}}} as the external verification mechanism for PINs. The {{{file}}} authentication provider is _not_ used for HTTP Basic password verification; we've specified {{{OTP}}} for that instead via the {{{AuthBasicProvider}}} directive. Note that we could have chosen any other Apache authentication provider besides {{{file}}} for PIN verification.
@@ -108,22 +108,22 @@ In order to avoid these problems, use authentication provider aliases. This func
 {{{
 # Create the "my-pin" authn provider based on the "file" authn provider
 <AuthnProviderAlias file my-pin>
-	AuthUserfile			"/etc/otp-pins"
+    AuthUserfile            "/etc/otp-pins"
 </AuthnProviderAlias>
 
 # Create the "my-otp" authn provider based on "OTP" authn provider
 <AuthnProviderAlias OTP my-otp>
-    OTPAuthUsersFile 		"/etc/otp-users.txt"
-	OTPAuthLogoutOnIPChange On
-    OTPAuthPINAuthProvider 	my-pin
+    OTPAuthUsersFile        "/etc/otp-users.txt"
+    OTPAuthLogoutOnIPChange On
+    OTPAuthPINAuthProvider  my-pin
 </AuthnProviderAlias>
 
 # Protect directory using "my-otp" authn provider
 <Directory "/protected/stuff">
-    AuthType 				basic
-    AuthName 				"My Protected Area"
-    AuthBasicProvider 		my-otp
-    Require 				valid-user
+    AuthType                basic
+    AuthName                "My Protected Area"
+    AuthBasicProvider       my-otp
+    Require                 valid-user
 </Directory>
 }}}
 
