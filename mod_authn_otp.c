@@ -588,7 +588,10 @@ authn_otp_check_pin_external(request_rec *r, struct otp_config *const conf, cons
 
     /* Try each configured authn provider until we find one that recognizes this user */
     do {
-        if ((status = pentry->provider->check_password(r, username, pin)) != AUTH_USER_NOT_FOUND)
+        apr_table_setn(r->notes, AUTHN_PROVIDER_NAME_NOTE, pentry->provider_name);
+        status = pentry->provider->check_password(r, username, pin);
+        apr_table_unset(r->notes, AUTHN_PROVIDER_NAME_NOTE);
+        if (status != AUTH_USER_NOT_FOUND)
             break;
         pentry = pentry->next;
     } while (pentry != NULL);
