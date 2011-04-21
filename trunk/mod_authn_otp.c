@@ -39,6 +39,7 @@
 #include "util_md5.h"
 
 #include <time.h>
+#include <limits.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
@@ -96,6 +97,7 @@ struct otp_config {
     char                *users_file;            /* Name of the users file */
     int                 max_offset;             /* Maximum allowed counter offset from expected value */
     int                 max_linger;             /* Maximum time for which the same OTP can be used repeatedly */
+    u_int               max_otp_failures;       /* Maximum wrong OTP values before account becomes locked, or zero for no limit */
     int                 logout_ip_change;       /* Auto-logout user if IP address changes */
     authn_provider_list *provlist;              /* Authorization providers for checking PINs */
 };
@@ -114,6 +116,7 @@ struct otp_user {
     char                last_otp[MAX_OTP];
     time_t              last_auth;
     char                last_ip[MAX_IP];
+    u_int               num_otp_failures;
 };
 
 /* Internal functions */
@@ -140,7 +143,8 @@ static const int    powers10[] = { 10, 100, 1000, 10000, 100000, 1000000, 100000
 /*
  * Find/update a user in the users file.
  *
- * Note: if updating, the caller must ensure proper locking.
+ * Note: if updating, the caller must ensure proper locking. If finding, the "user" structure must
+ * be initialized with zeroes.
  */
 static authn_status
 find_update_user(request_rec *r, const char *usersfile, struct otp_user *const user, int update)
@@ -154,11 +158,15 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
     apr_file_t *newfile = NULL;
     apr_file_t *lockfile = NULL;
     apr_status_t status;
+    char *fail_count;
+    char *timestamp;
     char errbuf[64];
     struct tm tm;
     int found = 0;
     int linenum;
     char *last;
+    char *last_otp;
+    char *last_ip;
     char *s;
     char *t;
 
@@ -282,27 +290,64 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
             goto found;
         user->offset = atol(s);
 
-        /* Read last used OTP (optional) */
-        if ((s = apr_strtok(NULL, WHITESPACE, &last)) == NULL)
+        /* Read failure count (optional) */
+        if ((fail_count = apr_strtok(NULL, WHITESPACE, &last)) == NULL)
             goto found;
-        apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", s);
 
-        /* Read last successful authentication timestamp */
-        if ((s = apr_strtok(NULL, WHITESPACE, &last)) == NULL) {
-            apr_snprintf(invalid_reason, sizeof(invalid_reason), "missing last auth timestamp field");
+        /*
+         * At this point, read one of the following remaining field combinations:
+         *
+         * 1. No more fields
+         * 2. Last OTP, Timestamp, IP Address
+         * 3. Timestamp, IP Address (optional)
+         *
+         * Case #3 indicates an older style users files (i.e., without the failure count field), in which case
+         * "fail_count" is actually Last OTP, so we shift the fields we parsed and assume a failure count of zero.
+         */
+        last_otp = NULL;
+        timestamp = NULL;
+        last_ip = NULL;
+
+        /* Check for case #1 */
+        if ((last_otp = apr_strtok(NULL, WHITESPACE, &last)) == NULL)
+            goto found;
+
+        /* Check for case #3; if so, shift fields */
+        if (strchr(last_otp, 'T') != NULL) {
+            timestamp = last_otp;
+            last_otp = fail_count;
+            fail_count = NULL;
+        } else {                                /* we're in case 2 */
+            if ((timestamp = apr_strtok(NULL, WHITESPACE, &last)) == NULL) {
+                apr_snprintf(invalid_reason, sizeof(invalid_reason), "missing last auth timestamp field");
+                goto invalid;
+            }
+        }
+
+        /* Get last IP (optional only in case #3) */
+        if ((last_ip = apr_strtok(NULL, WHITESPACE, &last)) == NULL && fail_count != NULL) {
+            apr_snprintf(invalid_reason, sizeof(invalid_reason), "missing last IP address field");
             goto invalid;
         }
-        if ((t = strptime(s, TIME_FORMAT, &tm)) == NULL || *t != '\0') {
-            apr_snprintf(invalid_reason, sizeof(invalid_reason), "invalid auth timestamp \"%s\"", s);
+
+        /* Parse OTP failure count (if any) */
+        if (fail_count != NULL)
+            user->num_otp_failures = atoi(s);
+
+        /* Copy last used OTP */
+        apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", last_otp);
+
+        /* Parse last successful authentication timestamp */
+        if ((t = strptime(timestamp, TIME_FORMAT, &tm)) == NULL || *t != '\0') {
+            apr_snprintf(invalid_reason, sizeof(invalid_reason), "invalid auth timestamp \"%s\"", timestamp);
             goto invalid;
         }
         tm.tm_isdst = -1;
         user->last_auth = mktime(&tm);
 
-        /* Read last used IP address (optional) */
-        if ((s = apr_strtok(NULL, WHITESPACE, &last)) == NULL)
-            goto found;
-        apr_snprintf(user->last_ip, sizeof(user->last_ip), "%s", s);
+        /* Copy last used IP address (if any) */
+        if (last_ip != NULL)
+            apr_snprintf(user->last_ip, sizeof(user->last_ip), "%s", last_ip);
 
 found:
         /* We are not updating; return the user we found */
@@ -478,7 +523,7 @@ print_user(apr_file_t *file, const struct otp_user *user)
     apr_file_printf(file, "%-7s %-13s %-7s ", tbuf, user->username, pinstr);
     for (i = 0; i < user->keylen; i++)
         apr_file_printf(file, "%02x", user->key[i]);
-    apr_file_printf(file, " %-7ld", user->offset);
+    apr_file_printf(file, " %-7ld %-2u", user->offset, user->num_otp_failures);
     if (*user->last_otp != '\0') {
         strftime(tbuf, sizeof(tbuf), TIME_FORMAT, localtime(&user->last_auth));
         apr_file_printf(file, " %-7s %s %s", user->last_otp, tbuf, user->last_ip);
@@ -682,6 +727,13 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
     if ((status = find_update_user(r, conf->users_file, user, 0)) != AUTH_USER_FOUND)
         return status;
 
+    /* Check for max failures */
+    if (conf->max_otp_failures != 0 && user->num_otp_failures >= conf->max_otp_failures) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" has reached the maximum wrong OTP limit of %u",
+          user->username, conf->max_otp_failures);
+        return AUTH_DENIED;
+    }
+
     /* Check PIN prefix (if appropriate) */
     if (user->algorithm != OTP_ALGORITHM_MOTP) {
         char pinbuf[MAX_PIN];
@@ -718,7 +770,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
         if (conf->logout_ip_change && *user->last_ip != '\0' && strcmp(user->last_ip, r->connection->remote_ip) != 0) {
             ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the previous OTP"
               " but from a different IP address (was %s, now %s)", user->username, user->last_ip, r->connection->remote_ip);
-            return AUTH_DENIED;
+            goto fail;
         }
 
         /* Is it within the configured linger time? */
@@ -731,7 +783,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
         /* Report failure to the log */
         ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the previous OTP"
           " but it has expired (max linger is %d sec.)", user->username, conf->max_linger);
-        return AUTH_DENIED;
+        goto fail;
     }
 
     /* Get expected counter value and offset window */
@@ -779,6 +831,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
 success:
     /* Update user's last auth information and next expected offset */
     user->offset = user->time_interval == 0 ? counter + offset + 1 : user->offset + offset;
+    user->num_otp_failures = 0;
     apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", otp_given);
     user->last_auth = now;
     apr_snprintf(user->last_ip, sizeof(user->last_ip), "%s", r->connection->remote_ip);
@@ -788,10 +841,20 @@ success:
 
     /* Done */
     return AUTH_GRANTED;
+
+fail:
+    /* Update user's failure count */
+    if (user->num_otp_failures < UINT_MAX) {
+        user->num_otp_failures++;
+        find_update_user(r, conf->users_file, user, 1);
+    }
+    return AUTH_DENIED;
 }
 
 /*
  * HTTP digest authentication
+ *
+ * NOTE: OTPAuthMaxOTPFailure does not count digest authentication failures!
  */
 static authn_status
 authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm, char **rethash)
@@ -817,6 +880,13 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
     apr_snprintf(user->username, sizeof(user->username), "%s", username);
     if ((status = find_update_user(r, conf->users_file, user, 0)) != AUTH_USER_FOUND)
         return status;
+
+    /* Check for max failures */
+    if (conf->max_otp_failures != 0 && user->num_otp_failures >= conf->max_otp_failures) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" has reached the maximum wrong OTP limit of %u",
+          user->username, conf->max_otp_failures);
+        return AUTH_DENIED;
+    }
 
     /* The user's PIN must be known to us */
     switch (user->pincfg) {
@@ -905,6 +975,7 @@ get_config(request_rec *r)
         conf->users_file = apr_pstrdup(r->pool, dir_conf->users_file);
     conf->max_offset = dir_conf->max_offset;
     conf->max_linger = dir_conf->max_linger;
+    conf->max_otp_failures = dir_conf->max_otp_failures;
     conf->logout_ip_change = dir_conf->logout_ip_change;
     copy_provider_list(r->pool, &conf->provlist, dir_conf->provlist);
 
@@ -931,6 +1002,7 @@ create_authn_otp_dir_config(apr_pool_t *p, char *d)
     conf->users_file = NULL;
     conf->max_offset = -1;
     conf->max_linger = -1;
+    conf->max_otp_failures = 0;
     conf->logout_ip_change = -1;
     conf->provlist = NULL;
     return conf;
@@ -949,6 +1021,7 @@ merge_authn_otp_dir_config(apr_pool_t *p, void *base_conf, void *new_conf)
         conf->users_file = apr_pstrdup(p, conf1->users_file);
     conf->max_offset = conf2->max_offset != -1 ? conf2->max_offset : conf1->max_offset;
     conf->max_linger = conf2->max_linger != -1 ? conf2->max_linger : conf1->max_linger;
+    conf->max_otp_failures = conf2->max_otp_failures != 0 ? conf2->max_otp_failures : conf1->max_otp_failures;
     conf->logout_ip_change = conf2->logout_ip_change != -1 ? conf2->logout_ip_change : conf1->logout_ip_change;
     copy_provider_list(p, &conf->provlist, conf2->provlist != NULL ? conf2->provlist : conf1->provlist);
     return conf;
@@ -1039,6 +1112,11 @@ static const command_rec authn_otp_cmds[] =
         (void *)APR_OFFSETOF(struct otp_config, max_linger),
         OR_AUTHCFG,
         "maximum time (in seconds) for which a one-time password can be repeatedly used"),
+    AP_INIT_TAKE1("OTPAuthMaxOTPFailure",
+        ap_set_int_slot,
+        (void *)APR_OFFSETOF(struct otp_config, max_otp_failures),
+        OR_AUTHCFG,
+        "maximum number of consecutive wrong OTP values before account becomes locked"),
     AP_INIT_FLAG("OTPAuthLogoutOnIPChange",
         ap_set_flag_slot,
         (void *)APR_OFFSETOF(struct otp_config, logout_ip_change),
