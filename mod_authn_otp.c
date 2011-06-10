@@ -795,6 +795,10 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
         counter = now / user->time_interval + user->offset;
         window_start = -conf->max_offset;
         window_stop = conf->max_offset;
+
+        /* Expand upper bound of window to ensure an absolute offset of zero is included in the search (issue #14) */
+        if (window_stop < -user->offset)
+            window_stop = -user->offset;
     }
 
     /* Test OTP using expected counter first */
