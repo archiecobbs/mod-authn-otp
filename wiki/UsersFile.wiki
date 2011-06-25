@@ -6,7 +6,7 @@ The users file contains the secret information about users, PINs, and token keys
 
 You will need to create this file manually and be sure to set the permissions correctly (see below). Each line defines one user+token combination. Currently a user may only have a single associated token.
 
-Users may have an arbitrary length PIN, or a dash ("-") for no PIN, or a plus ("+") if the PIN is verified externally using the configured {{{OTPAuthPINAuthProvider}}} list (see [Configuration] for details on external PIN verification).
+Users may have an arbitrary length PIN, or a dash ("-") for no PIN, or a plus ("+") if the PIN is verified externally using the configured {{{OTPAuthPINAuthProvider}}} list (see [Configuration] for details on external PIN verification). It is strongly recommended to set all PIN's to a plus sign and configure a {{{OTPAuthPINAuthProvider}}} for PIN verification.
 
 When a user has a PIN, it must precede the one-time password in the HTTP password field. For example, if a user has PIN "1234" and the token generates the one-time password of "567890", then the user must enter "1234567890" as their password for HTTP authentication.
 
@@ -40,9 +40,10 @@ An example users file is included in the distribution and is reproduced here:
 #   3. PIN                User's PIN, or "-" if user has no PIN, or "+" to verify PIN via "OTPAuthPINAuthProvider"
 #   4. Token Key          Secret key for the token algorithm (see RFC 4226)
 #   5. Counter/Offset     Next expected counter value (event tokens) or counter offset (time tokens)
-#   6. Last OTP           The previous successfully used one-time password
-#   7. Time of Last OTP   Local timestamp when the last OTP was generated (in the form 2009-06-12T17:52:32L)
-#   8. Last IP address    IP address used during the most recent successful attempt
+#   6. Failure counter    Number of consecutive wrong OTP's provided by this users (for "OTPAuthMaxOTPFailure")
+#   7. Last OTP           The previous successfully used one-time password
+#   8. Time of Last OTP   Local timestamp when the last OTP was generated (in the form 2009-06-12T17:52:32L)
+#   9. Last IP address    IP address used during the most recent successful attempt
 #
 #   Fields 5 and beyond are optional. Fields 6 and beyond should be omitted for new users.
 #
@@ -74,9 +75,9 @@ An example users file is included in the distribution and is reproduced here:
 
 # Some users who have logged in at least once.
 
-HOTP    barney        1234    8a2d55707a9084982649dadc04b426a06df19ab2 21      820658  2009-06-12T17:52:32L 192.168.1.1
-HOTP    fred          5678    acbd18db4cc2f85cedef654fccc4a4d8bd537891 78      617363  2009-06-04T21:17:03L 192.168.1.2
-HOTP/T  joe           999999  ef654fccdef654fccc4a4d8acbd18db4cc2f85ce -2      883913  2009-06-04T21:17:03L 10.1.1.153
+HOTP    barney        1234    8a2d55707a9084982649dadc04b426a06df19ab2 21      0 820658  2009-06-12T17:52:32L 192.168.1.1
+HOTP    fred          5678    acbd18db4cc2f85cedef654fccc4a4d8bd537891 78      0 617363  2009-06-04T21:17:03L 192.168.1.2
+HOTP/T  joe           999999  ef654fccdef654fccc4a4d8acbd18db4cc2f85ce -2      2 883913  2009-06-04T21:17:03L 10.1.1.153
 
 # Wilma and Betty are new users. Note betty does not have a PIN so "-" is used instead as a placeholder
 
@@ -88,6 +89,11 @@ HOTP    betty         -       54fccc418a4d8acbddef6db4cc2f85ce99321d64
 HOTP    bambam        +       d8acbddef6db4cc254fccc418a4f85ce99321d64
 
 }}}
+
+To add users, add new lines to the file containing only the first four or five fields (see for example {{{wilma}}}, {{{betty}}}, and {{{bambam}}}).
+
+Some of the fields have been added to this file in newer *mod_authn_otp* versions. Newer versions of *mod_authn_otp*
+are backward compatible with older versions' file formats and will automatically upgrade them the first time they are used.
 
 == Locking ==
 

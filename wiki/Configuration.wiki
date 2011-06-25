@@ -45,6 +45,7 @@ Finally, configure the *mod_authn_otp* specific directives:
 || *OTPAuthMaxLinger* || Number || 600 || No || Maximum allowed linger time in seconds ||
 || *OTPAuthLogoutOnIPChange* || Boolean || Off || No || Auto-logout user if their IP address changes ||
 || *OTPAuthPINAuthProvider* || List || Empty || No || One or more [http://httpd.apache.org/docs/2.2/howto/auth.html authentication providers] to be used for external PIN verification ||
+|| *OTPAuthMaxOTPFailure* || Number || None || No || Maximum number of consecutive wrong OTP values before account is locked out ||
 
 A detailed description of each directive follows.
 
@@ -81,6 +82,8 @@ See OneTimePasswords for more details about why a linger time is required for HT
 This option is an extra security safeguard that will refuse to allow re-use of a one-time password if the IP address from which the new request originates changes. This would prevent (for example) someone sniffing your password from an unencrypted HTTP request and reusing it.
 
 Specify this setting as either {{{On}}} or {{{Off}}}. While the default value is {{{Off}}} for backward-compatibility, it is strongly recommended to eanble this setting unless you have a reason not to (e.g., requests are going through a proxy farm).
+
+This configuration directive is supported in versions 1.1.2 or later of *mod_authn_otp*.
 
 === OTPAuthPINAuthProvider ===
 
@@ -128,3 +131,17 @@ In order to avoid these problems, use authentication provider aliases. This func
     Require                 valid-user
 </Directory>
 }}}
+
+This configuration directive is supported in versions 1.1.3 or later of *mod_authn_otp*.
+
+=== OTPAuthMaxOTPFailure ===
+
+This directive sets a limit on how many consecutive incorrectly submitted OTP values *mod_authn_otp* will allow before locking out the user's account. This serves as a protecting against automated attacks that use a brute-force approach to try all possible OTP values.
+
+Note that this limit applies to incorrect OTP values, not incorrect PIN values. When an incorrect PIN is submitted, we never get as far as checking the OTP. So necessarily, all attempts that count against this limit have a correct PIN. For example, this could happen in a situation where an attacker knows (or has guessed) the user's PIN, but does not have access to the user's token.
+
+Look in the Apache server error log for a message at level {{{NOTICE}}} of the form {{{user "fred" has reached the maximum wrong OTP limit}}} to detect a lockout situation. When an account is locked out, a manual edit of the UsersFile is required to unlock it: simply delete the sixth and subsequent fields for that user.
+
+The default value for this directive is zero, which means this check is disabled.
+
+This configuration directive is supported in versions 1.1.4 or later of *mod_authn_otp*.
