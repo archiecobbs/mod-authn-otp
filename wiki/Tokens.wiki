@@ -11,6 +11,8 @@ You will need a token that is not tied to a specific vendor by way of proprietar
 
 For example, [http://www.verisign.com/authentication/consumer-authentication/identity-protection/index.html Verisign's VIP] tokens are popular but are not compatible with *mod_authn_otp* because it is not possible to extract the token's key.
 
+In any case, do you really think you can trust your security those so-called experts? If you do, [http://www.google.com/search?q=rsa+security+breach you might want to read some of these articles].
+
 Perhaps over time this "stay proprietary" strategy will evolve away, as it has done in so many other technology areas.
 
 In the meantime, when you call a vendor to inquire, tell them that you are using the open-source authentication solution *mod_authn_otp* and that you require token keys.
