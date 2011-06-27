@@ -20,9 +20,9 @@ Tag release
     svn cp https://mod-authn-otp.googlecode.com/svn/trunk https://mod-authn-otp.googlecode.com/svn/tags/VERSION
 
 mod-authn-otp project
-    update wikified man page
+    update users file sample in UsersFile wiki page
+    update any new configuration directives in Configuration wiki page
     Add new version to issue tracker: http://code.google.com/p/mod-authn-otp/adminIssues
-    send email to s3backer-devel google group
 
 OBS
     update mod-authn-otp.spec
