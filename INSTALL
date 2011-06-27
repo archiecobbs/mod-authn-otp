@@ -5,8 +5,7 @@ To build and install mod_authn_otp:
 
         apache2-devel
         openssl-devel
-        apache2-dev (Ubuntu)
-        build-essential (Ubuntu)
+        apache2-threaded-dev (Debian, Ubuntu)
 
     2. Run `./configure'
     3. Run `make'

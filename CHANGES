@@ -1,9 +1,4 @@
 
-Version 1.1.4 (r106) released 27 Jun 2011
-
-    - Always allow stale time-based offsets to re-synchronize (issue #14)
-    - Added "OTPAuthMaxOTPFailure" to lock accounts after repeated wrong OTP's
-
 Version 1.1.3 (r94) released 28 Mar 2011
 
     - Fixed bug with "OTPAuthPINAuthProvider" and <AuthnProviderAlias>

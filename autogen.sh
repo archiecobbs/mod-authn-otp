@@ -38,10 +38,7 @@ rm -rf .libs autom4te*.cache scripts aclocal.m4 configure config.log config.stat
 rm -f otptool *.o *.la *.lo *.slo Makefile.in Makefile
 rm -f mod_authn_otp-?.?.?.tar.gz
 
-if [ "$1" = "-C" ]; then
-    echo "cleanup done, exiting"
-    exit
-fi
+[ "$1" = "-c" ] && exit
 
 # Create scripts directory
 mkdir -p scripts
@@ -55,8 +52,5 @@ ${AUTOMAKE} --add-missing -c --foreign
 echo "running autoconf"
 ${AUTOCONF} -f -i
 
-if [ "$1" = "-c" ]; then
-    echo "running configure"
-    ./configure
-fi
+[ "$1" = "-C" ] && ./configure
 
