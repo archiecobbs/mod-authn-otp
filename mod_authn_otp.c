@@ -143,8 +143,7 @@ static const int    powers10[] = { 10, 100, 1000, 10000, 100000, 1000000, 100000
 /*
  * Find/update a user in the users file.
  *
- * Note: if updating, the caller must ensure proper locking. If finding, the "user" structure must
- * be initialized with zeroes.
+ * Note: finding, the "user" structure must be initialized with zeroes.
  */
 static authn_status
 find_update_user(request_rec *r, const char *usersfile, struct otp_user *const user, int update)
@@ -153,22 +152,13 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
     char newusersfile[APR_PATH_MAX];
     char lockusersfile[APR_PATH_MAX];
     char linebuf[1024];
-    char linecopy[1024];
     apr_file_t *file = NULL;
     apr_file_t *newfile = NULL;
     apr_file_t *lockfile = NULL;
     apr_status_t status;
-    char *fail_count;
-    char *timestamp;
     char errbuf[64];
-    struct tm tm;
     int found = 0;
     int linenum;
-    char *last;
-    char *last_otp;
-    char *last_ip;
-    char *s;
-    char *t;
 
     /* If updating, open and lock lockfile */
     if (update) {
@@ -207,6 +197,18 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
     /* Scan entries */
     for (linenum = 1; apr_file_gets(linebuf, sizeof(linebuf), file) == 0; linenum++) {
         struct otp_user tokinfo;
+        struct tm tm;
+        int nibs[2];
+        char linecopy[1024];
+        char *fields[4];
+        int field_count;
+        char *fail_count;
+        char *timestamp;
+        char *last_otp;
+        char *last_ip;
+        char *last;
+        char *s;
+        int i;
 
         /* Save a copy of the line */
         apr_snprintf(linecopy, sizeof(linecopy), "%s", linebuf);
@@ -268,9 +270,6 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
             goto invalid;
         }
         for (user->keylen = 0; user->keylen < sizeof(user->key) && *s != '\0'; user->keylen++) {
-            int nibs[2];
-            int i;
-
             for (i = 0; i < 2; i++) {
                 if (apr_isdigit(*s))
                     nibs[i] = *s - '0';
@@ -290,60 +289,49 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
             goto found;
         user->offset = atol(s);
 
-        /* Read failure count (optional) */
-        if ((fail_count = apr_strtok(NULL, WHITESPACE, &last)) == NULL)
-            goto found;
-
         /*
-         * At this point, read one of the following remaining field combinations:
+         * At this point, we will read one of the following remaining field combinations. The reason
+         * for these cases is because of backward compatibility with older versions of the users file.
          *
-         * 1. No more fields
-         * 2. Last OTP, Timestamp, IP Address
-         * 3. Timestamp, IP Address (optional)
+         * 0. No more fields
+         * 1. Fail count
+         * 2. Fail count, Last OTP, Timestamp, IP Address
+         * 3. Last OTP, Timestamp
+         * 4. Last OTP, Timestamp, IP Address
          *
-         * Case #3 indicates an older style users files (i.e., without the failure count field), in which case
-         * "fail_count" is actually Last OTP, so we shift the fields we parsed and assume a failure count of zero.
+         * Note that in each case, a different number of fields is found, so we can use the field count
+         * to determine which case we're in.
          */
-        last_otp = NULL;
-        timestamp = NULL;
-        last_ip = NULL;
-
-        /* Check for case #1 */
-        if ((last_otp = apr_strtok(NULL, WHITESPACE, &last)) == NULL)
-            goto found;
-
-        /* Check for case #3; if so, shift fields */
-        if (strchr(last_otp, 'T') != NULL) {
-            timestamp = last_otp;
-            last_otp = fail_count;
-            fail_count = NULL;
-        } else {                                /* we're in case 2 */
-            if ((timestamp = apr_strtok(NULL, WHITESPACE, &last)) == NULL) {
-                apr_snprintf(invalid_reason, sizeof(invalid_reason), "missing last auth timestamp field");
-                goto invalid;
-            }
+        for (i = field_count = 0; i < 4; i++) {
+            if ((fields[i] = apr_strtok(NULL, WHITESPACE, &last)) != NULL)
+                field_count++;
         }
 
-        /* Get last IP (optional only in case #3) */
-        if ((last_ip = apr_strtok(NULL, WHITESPACE, &last)) == NULL && fail_count != NULL) {
-            apr_snprintf(invalid_reason, sizeof(invalid_reason), "missing last IP address field");
-            goto invalid;
-        }
+        /* Interpret fields based on cases 0..4 */
+        i = 0;
+        fail_count = (field_count < 2 || field_count == 4) ? fields[i++] : NULL;
+        last_otp = fields[i++];
+        timestamp = fields[i++];
+        last_ip = fields[i++];
 
         /* Parse OTP failure count (if any) */
         if (fail_count != NULL)
-            user->num_otp_failures = atoi(s);
+            user->num_otp_failures = atoi(fail_count);
 
-        /* Copy last used OTP */
-        apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", last_otp);
+        /* Parse last used OTP and parse last successful authentication timestamp (if any) */
+        if (last_otp != NULL && timestamp != NULL) {
 
-        /* Parse last successful authentication timestamp */
-        if ((t = strptime(timestamp, TIME_FORMAT, &tm)) == NULL || *t != '\0') {
-            apr_snprintf(invalid_reason, sizeof(invalid_reason), "invalid auth timestamp \"%s\"", timestamp);
-            goto invalid;
+            /* Copy last used OTP */
+            apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", last_otp);
+
+            /* Parse last successful authentication timestamp */
+            if ((s = strptime(timestamp, TIME_FORMAT, &tm)) == NULL || *s != '\0') {
+                apr_snprintf(invalid_reason, sizeof(invalid_reason), "invalid auth timestamp \"%s\"", timestamp);
+                goto invalid;
+            }
+            tm.tm_isdst = -1;
+            user->last_auth = mktime(&tm);
         }
-        tm.tm_isdst = -1;
-        user->last_auth = mktime(&tm);
 
         /* Copy last used IP address (if any) */
         if (last_ip != NULL)
@@ -523,7 +511,7 @@ print_user(apr_file_t *file, const struct otp_user *user)
     apr_file_printf(file, "%-7s %-13s %-7s ", tbuf, user->username, pinstr);
     for (i = 0; i < user->keylen; i++)
         apr_file_printf(file, "%02x", user->key[i]);
-    apr_file_printf(file, " %-7ld %-2u", user->offset, user->num_otp_failures);
+    apr_file_printf(file, " %-3ld %-2u", user->offset, user->num_otp_failures);
     if (*user->last_otp != '\0') {
         strftime(tbuf, sizeof(tbuf), TIME_FORMAT, localtime(&user->last_auth));
         apr_file_printf(file, " %-7s %s %s", user->last_otp, tbuf, user->last_ip);
@@ -829,8 +817,14 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
     }
 
     /* Report failure to the log */
-    ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the wrong OTP", user->username);
-    return AUTH_DENIED;
+    if (conf->max_otp_failures != 0) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the wrong OTP (%d/%d consecutive)",
+          user->username, user->num_otp_failures + 1, conf->max_otp_failures);
+    } else {
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the wrong OTP (%d consecutive)",
+          user->username, user->num_otp_failures + 1);
+    }
+    goto fail;
 
 success:
     /* Update user's last auth information and next expected offset */
