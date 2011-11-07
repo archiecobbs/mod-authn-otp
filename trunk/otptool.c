@@ -89,7 +89,6 @@ main(int argc, char **argv)
                 errx(EXIT_USAGE_ERROR, "invalid counter window `%s'", optarg);
             break;
         default:
-            warnx("unrecognized flag `-%c'", ch);
             usage();
             return EXIT_USAGE_ERROR;
         }
@@ -213,7 +212,7 @@ usage()
     fprintf(stderr, "  -i\tSpecify time interval in seconds (default %d)\n", DEFAULT_TIME_INTERVAL);
     fprintf(stderr, "  -m\tUse mOTP algorithm with given PIN; also implies `-d 6' and `-i 10'\n");
     fprintf(stderr, "  -t\tDerive initial counter value from the current time (conflicts with `-c')\n");
-    fprintf(stderr, "  -n\tSpecify number of digits in the generated OTP(s) (default %d)\n", DEFAULT_NUM_DIGITS);
+    fprintf(stderr, "  -d\tSpecify number of digits in the generated OTP(s) (default %d)\n", DEFAULT_NUM_DIGITS);
     fprintf(stderr, "  -w\tSpecify size of window for additional counter values (default %d)\n", DEFAULT_WINDOW);
 }
 
