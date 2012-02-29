@@ -126,7 +126,7 @@ static void         motp(const u_char *key, size_t keylen, const char *pin, u_lo
 static int          parse_token_type(const char *type, struct otp_user *tokinfo);
 static void         print_user(apr_file_t *file, const struct otp_user *user);
 static void         printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digits);
-static authn_status authn_otp_check_pin(request_rec *r, struct otp_config *conf, struct otp_user *user, const char *pin);
+static authn_status authn_otp_check_pin(request_rec *r, struct otp_config *const conf, struct otp_user *const user, const char *pin);
 static authn_status authn_otp_check_pin_external(request_rec *r, struct otp_config *const conf, const char *user, const char *pin);
 static authn_status authn_otp_check_password(request_rec *r, const char *username, const char *password);
 static authn_status authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm, char **rethash);
@@ -593,7 +593,7 @@ printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digi
 
     if (buflen > 0)
         *buf = '\0';
-    for (i = 0; i / 2 < dlen && i < max_digits && i < buflen - 1; i++) {
+    for (i = 0; i / 2 < (int)dlen && i < max_digits && i < (int)buflen - 1; i++) {
         u_int val = data[i / 2];
         if ((i & 1) == 0)
             val >>= 4;
@@ -780,7 +780,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
         window_start = 1;
         window_stop = conf->max_offset;
     } else {
-        counter = now / user->time_interval + user->offset;
+        counter = (int)now / user->time_interval + user->offset;
         window_start = -conf->max_offset;
         window_stop = conf->max_offset;
 
@@ -916,7 +916,7 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
         }
 
         /* Get expected counter value */
-        counter = user->time_interval == 0 ? user->offset : now / user->time_interval + user->offset;
+        counter = user->time_interval == 0 ? user->offset : (int)now / user->time_interval + user->offset;
 
         /* Generate OTP using expected counter */
         ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "generating digest hash for \"%s\" assuming OTP counter %d",
