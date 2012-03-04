@@ -543,7 +543,7 @@ print_user(apr_file_t *file, const struct otp_user *user)
 #if HAVE_STRPTIME
         strftime(tbuf, sizeof(tbuf), TIME_FORMAT, localtime(&user->last_auth));
 #else
-        snprintf(tbuf, sizeof(tbuf), "%lu", (u_long)user->last_auth);
+        apr_snprintf(tbuf, sizeof(tbuf), "%lu", (u_long)user->last_auth);
 #endif
         apr_file_printf(file, " %-7s %s %s", user->last_otp, tbuf, user->last_ip);
     }
