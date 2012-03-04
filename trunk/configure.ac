@@ -55,6 +55,9 @@ AC_SUBST(CFLAGS)
 AC_CHECK_LIB(crypto, EVP_sha1,,
 	[AC_MSG_ERROR([required library libcrypto missing])])
 
+# Check for optional functions
+AC_CHECK_FUNCS(strptime)
+
 # Check for required header files
 AC_HEADER_STDC
 AC_CHECK_HEADERS(ctype.h errno.h openssl/evp.h openssl/hmac.h openssl/md5.h stdio.h string.h time.h unistd.h, [],
@@ -63,6 +66,7 @@ AC_CHECK_HEADERS(err.h, [], [])
 
 # Generated files
 AC_CONFIG_FILES(Makefile)
+AM_CONFIG_HEADER(config.h)
 
 # Go
 AC_OUTPUT

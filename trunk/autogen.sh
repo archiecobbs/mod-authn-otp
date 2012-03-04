@@ -29,6 +29,7 @@ set -e
 
 # Constants
 ACLOCAL="aclocal"
+AUTOHEADER="autoheader"
 AUTOMAKE="automake"
 AUTOCONF="autoconf"
 
@@ -48,6 +49,9 @@ mkdir -p scripts
 
 echo "running aclocal"
 ${ACLOCAL} ${ACLOCAL_ARGS} -I scripts
+
+echo "running autoheader"
+${AUTOHEADER}
 
 echo "running automake"
 ${AUTOMAKE} --add-missing -c --foreign
