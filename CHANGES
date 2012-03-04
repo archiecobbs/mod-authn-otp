@@ -1,4 +1,8 @@
 
+Version Next
+
+    - Allow building on systems without strptime(3) (e.g., Windows)
+
 Version 1.1.4 (r106) released 27 Jun 2011
 
     - Always allow stale time-based offsets to re-synchronize (issue #14)

@@ -24,6 +24,15 @@
 #include "ap_provider.h"
 #include "mod_auth.h"
 
+// Fix libapr pollution
+#undef PACKAGE_BUGREPORT
+#undef PACKAGE_NAME
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
+#undef PACKAGE_VERSION
+
+#include "config.h"
+
 #define APR_WANT_STRFUNC
 #include "apr_want.h"
 #include "apr_strings.h"
@@ -59,9 +68,13 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 #define WHITESPACE                      " \t\r\n\v"
 #define NEWFILE_SUFFIX                  ".new"
 #define LOCKFILE_SUFFIX                 ".lock"
-#define TIME_FORMAT                     "%Y-%m-%dT%H:%M:%SL"
 #define PIN_EXTERNAL                    "+"
 #define PIN_NONE                        "-"
+
+/* Formatting of time values */
+#if HAVE_STRPTIME
+#define TIME_FORMAT                     "%Y-%m-%dT%H:%M:%SL"
+#endif
 
 /* OTP counter algorithms */
 #define OTP_ALGORITHM_HOTP              1
@@ -197,7 +210,6 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
     /* Scan entries */
     for (linenum = 1; apr_file_gets(linebuf, sizeof(linebuf), file) == 0; linenum++) {
         struct otp_user tokinfo;
-        struct tm tm;
         int nibs[2];
         char linecopy[1024];
         char *fields[4];
@@ -320,17 +332,32 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
 
         /* Parse last used OTP and parse last successful authentication timestamp (if any) */
         if (last_otp != NULL && timestamp != NULL) {
+#if HAVE_STRPTIME
+            struct tm tm;
+#else
+            char *eptr;
+            u_long secs;
+#endif
 
             /* Copy last used OTP */
             apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", last_otp);
 
             /* Parse last successful authentication timestamp */
+#if HAVE_STRPTIME
             if ((s = strptime(timestamp, TIME_FORMAT, &tm)) == NULL || *s != '\0') {
                 apr_snprintf(invalid_reason, sizeof(invalid_reason), "invalid auth timestamp \"%s\"", timestamp);
                 goto invalid;
             }
             tm.tm_isdst = -1;
             user->last_auth = mktime(&tm);
+#else
+            secs = strtol(timestamp, &eptr, 10);
+            if (secs == LONG_MIN || secs == LONG_MAX || *eptr != '\0') {
+                apr_snprintf(invalid_reason, sizeof(invalid_reason), "invalid auth timestamp \"%s\"", timestamp);
+                goto invalid;
+            }
+            user->last_auth = (time_t)secs;
+#endif
         }
 
         /* Copy last used IP address (if any) */
@@ -513,7 +540,11 @@ print_user(apr_file_t *file, const struct otp_user *user)
         apr_file_printf(file, "%02x", user->key[i]);
     apr_file_printf(file, " %-3ld %-2u", user->offset, user->num_otp_failures);
     if (*user->last_otp != '\0') {
+#if HAVE_STRPTIME
         strftime(tbuf, sizeof(tbuf), TIME_FORMAT, localtime(&user->last_auth));
+#else
+        snprintf(tbuf, sizeof(tbuf), "%lu", (u_long)user->last_auth);
+#endif
         apr_file_printf(file, " %-7s %s %s", user->last_otp, tbuf, user->last_ip);
     }
     apr_file_printf(file, "\n");
