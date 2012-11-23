@@ -89,7 +89,7 @@ This configuration directive is supported in versions 1.1.2 or later of *mod_aut
 
 This directive configures the [http://httpd.apache.org/docs/2.2/howto/auth.html authentication provider] list for external PIN verification. External PIN verification applies to any user who's PIN is set to {{{+}}} in the [UsersFile].
 
-*Note:* External PIN verification is not compatible with digest authentication. Users whose PINs are set to {{{+}}} in the [UsersFile] will not be able to authenticate using digest authentication.
+*Note:* External PIN verification is not compatible with digest authentication or MOTP tokens. Users whose PINs are set to {{{+}}} in the [UsersFile] will not be able to authenticate using digest authentication or MOTP tokens.
 
 For example, to have all your PINs stored in {{{htpasswd}}}-style encrypted form in the file {{{/etc/pins}}} instead of in plaintext in the [UsersFile], you set all the PINs to {{{+}}} in the [UsersFile], and then configure Apache like this:
 {{{
