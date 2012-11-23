@@ -103,3 +103,4 @@ are backward compatible with older versions' file formats and will automatically
 
 *mod_authn_otp* supports using the [http://motp.sourceforge.net/ Mobile-OTP] algorithm instead of HOTP/OATH. In this case the PIN (if any) should be entered into the token when generating the one-time password and _not_ as a prefix to the HTTP password. Use token type "MOTP" instead of "HOTP".
 
+Note: MOTP authentication is not compatible with the *OTPAuthPINAuthProvider* configuration directive. With MOTP tokens, the PIN must be explicitly provided in the users file.
