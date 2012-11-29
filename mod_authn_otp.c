@@ -57,6 +57,11 @@
 #ifndef AUTHN_PROVIDER_VERSION
 #define AUTHN_PROVIDER_VERSION "0"
 #endif
+#if AP_MODULE_MAGIC_AT_LEAST(20111203, 0)
+#define USER_AGENT_IP(req)  ((req)->useragent_ip)
+#else
+#define USER_AGENT_IP(req)  ((req)->connection->remote_ip)
+#endif
 
 /* Module definition */
 module AP_MODULE_DECLARE_DATA authn_otp_module;
@@ -786,9 +791,9 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
     if (strcmp(otp_given, user->last_otp) == 0) {
 
         /* Did user's IP address change? */
-        if (conf->logout_ip_change && *user->last_ip != '\0' && strcmp(user->last_ip, r->connection->remote_ip) != 0) {
+        if (conf->logout_ip_change && *user->last_ip != '\0' && strcmp(user->last_ip, USER_AGENT_IP(r)) != 0) {
             ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the previous OTP"
-              " but from a different IP address (was %s, now %s)", user->username, user->last_ip, r->connection->remote_ip);
+              " but from a different IP address (was %s, now %s)", user->username, user->last_ip, USER_AGENT_IP(r));
             goto fail;
         }
 
@@ -863,7 +868,7 @@ success:
     user->num_otp_failures = 0;
     apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", otp_given);
     user->last_auth = now;
-    apr_snprintf(user->last_ip, sizeof(user->last_ip), "%s", r->connection->remote_ip);
+    apr_snprintf(user->last_ip, sizeof(user->last_ip), "%s", USER_AGENT_IP(r));
 
     /* Update user's record */
     find_update_user(r, conf->users_file, user, 1);
@@ -932,7 +937,7 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
     now = time(NULL);
     if (now >= user->last_auth
       && now < user->last_auth + conf->max_linger
-      && (!conf->logout_ip_change || *user->last_ip == '\0' || strcmp(user->last_ip, r->connection->remote_ip) == 0)) {
+      && (!conf->logout_ip_change || *user->last_ip == '\0' || strcmp(user->last_ip, USER_AGENT_IP(r)) == 0)) {
         ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r,
           "generating digest hash for \"%s\" assuming reuse of OTP within %d sec. linger time",
           user->username, conf->max_linger);
