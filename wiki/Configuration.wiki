@@ -81,7 +81,9 @@ See OneTimePasswords for more details about why a linger time is required for HT
 
 This option is an extra security safeguard that will refuse to allow re-use of a one-time password if the IP address from which the new request originates changes. This would prevent (for example) someone sniffing your password from an unencrypted HTTP request and reusing it.
 
-Specify this setting as either {{{On}}} or {{{Off}}}. While the default value is {{{Off}}} for backward-compatibility, it is strongly recommended to eanble this setting unless you have a reason not to (e.g., requests are going through a proxy farm).
+Specify this setting as either {{{On}}} or {{{Off}}}. While the default value is {{{Off}}} for backward-compatibility, it is strongly recommended to enable this setting unless you have a reason not to (e.g., requests are going through a proxy farm).
+
+Note that in Apache 2.4.x and later, the IP address being checked is the originating user agent's IP address instead of the IP address of whatever machine connects to the server via TCP. This only matters if the client is behind a proxy, in which case these will be different. In Apache 2.2.x, we track the IP address of the proxy, whereas in Apache 2.4.x, we track the IP of the originating client ([http://httpd.apache.org/docs/2.4/developer/new_api_2_4.html#upgrading more info here]).
 
 This configuration directive is supported in versions 1.1.2 or later of *mod_authn_otp*.
 
