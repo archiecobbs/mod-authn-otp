@@ -14,7 +14,7 @@ Release tarball
     svn commit -> revision R+1
     svn update
     sh autogen.sh -c && make distcheck
-    upload tarball to http://code.google.com/p/s3backer/downloads/list
+    upload tarball to http://code.google.com/p/mod-authn-otp/downloads/list
 
 Tag release
     svn cp https://mod-authn-otp.googlecode.com/svn/trunk https://mod-authn-otp.googlecode.com/svn/tags/VERSION
