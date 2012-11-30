@@ -1,0 +1,38 @@
+
+Version 1.1.5 (r124) released 29 Nov 2012
+
+    - Allow building on systems without strptime(3) (e.g., Windows)
+    - Add support for Apache 2.4.x
+
+Version 1.1.4 (r106) released 27 Jun 2011
+
+    - Always allow stale time-based offsets to re-synchronize (issue #14)
+    - Added "OTPAuthMaxOTPFailure" to lock accounts after repeated wrong OTP's
+
+Version 1.1.3 (r94) released 28 Mar 2011
+
+    - Fixed bug with "OTPAuthPINAuthProvider" and <AuthnProviderAlias>
+
+Version 1.1.2 (r87) released 22 Mar 2011
+
+    - Added "OTPAuthPINAuthProvider" to allow alternate verification of PINs
+    - Added "OTPAuthLogoutOnIPChange" flag to auto-logout on IP address change
+    - Build fixes for Solaris
+
+Version 1.1.1 (r66) released 15 Aug 2010
+
+    - Build fixes
+
+Version 1.1.0 (r44) released 23 Jun 2009
+
+    - Moved time interval and #digits configuration into users file
+    - Fixed bug in time based token synchronization at large offsets
+    - Added support for the Mobile-OTP algorithm: http://motp.sourceforge.net/
+    - Added otptool(1) one-time password utility program.
+    - Accept either decimal or hexadecimal values (basic auth only).
+
+Version 1.0.0 (r10) released 14 Jun 2009
+
+    - Initial release
+
+$Id$

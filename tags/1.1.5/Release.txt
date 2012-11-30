@@ -1,0 +1,35 @@
+Checklist for releasing version VERSION
+---------------------------------------
+
+Final check
+    make distcheck
+
+Release tarball
+    sh autogen.sh -C
+    svn update
+    svn status
+    verify everything is clean
+    verify configure.ac contains VERSION
+    update CHANGES with today's date and next revision R=R+1 for VERSION
+    svn commit -> revision R+1
+    svn update
+    sh autogen.sh -c && make distcheck
+    upload tarball to http://code.google.com/p/s3backer/downloads/list
+
+Tag release
+    svn cp https://mod-authn-otp.googlecode.com/svn/trunk https://mod-authn-otp.googlecode.com/svn/tags/VERSION
+
+mod-authn-otp project
+    update users file sample in UsersFile wiki page
+    update any new configuration directives in Configuration wiki page
+    Add new version to issue tracker: http://code.google.com/p/mod-authn-otp/adminIssues
+
+OBS
+    update mod-authn-otp.spec
+    update OBS project
+
+Bump version
+    edit configure.ac and set version to VERSION + 1
+    svn commit
+
+$Id$
