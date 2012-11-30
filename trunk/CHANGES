@@ -1,5 +1,5 @@
 
-Version Next
+Version 1.1.5 (r124) released 29 Nov 2012
 
     - Allow building on systems without strptime(3) (e.g., Windows)
     - Add support for Apache 2.4.x
