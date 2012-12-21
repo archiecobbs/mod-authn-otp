@@ -1,3 +1,8 @@
+Version Next
+
+    - Detect errors when writing to the new users.txt file
+    - Fix (harmless) bug where new users.txt file was not being closed
+    - Add -Werror configure flag to fail on compiler warnings
 
 Version 1.1.5 (r124) released 29 Nov 2012
 

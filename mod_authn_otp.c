@@ -142,7 +142,7 @@ static authn_status find_update_user(request_rec *r, const char *usersfile, stru
 static void         hotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen);
 static void         motp(const u_char *key, size_t keylen, const char *pin, u_long counter, int ndigits, char *buf, size_t buflen);
 static int          parse_token_type(const char *type, struct otp_user *tokinfo);
-static void         print_user(apr_file_t *file, const struct otp_user *user);
+static apr_status_t print_user(apr_file_t *file, const struct otp_user *user);
 static void         printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digits);
 static authn_status authn_otp_check_pin(request_rec *r, struct otp_config *const conf, struct otp_user *const user, const char *pin);
 static authn_status authn_otp_check_pin_external(request_rec *r, struct otp_config *const conf, const char *user, const char *pin);
@@ -255,7 +255,8 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
 
         /* If we're updating, print out updated user info to new file */
         if (update) {
-            print_user(newfile, user);
+            if ((status = print_user(newfile, user)) != 0)
+                goto write_error;
             continue;
         }
 
@@ -384,9 +385,13 @@ invalid:
 
 copy:
         /* Copy line to new file */
-        if (newfile != NULL)
-            apr_file_puts(linecopy, newfile);
+        if (newfile != NULL) {
+            if ((status = apr_file_puts(linecopy, newfile)) != 0)
+                goto write_error;
+        }
     }
+
+    /* Close original file */
     apr_file_close(file);
     file = NULL;
 
@@ -395,6 +400,14 @@ copy:
         ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" not found in OTP users file \"%s\"", user->username, usersfile);
         return AUTH_USER_NOT_FOUND;
     }
+
+    /* Close temporary file */
+    if ((status = apr_file_close(newfile)) != 0) {
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "error closing new OTP users file \"%s\": %s",
+          newusersfile, apr_strerror(status, errbuf, sizeof(errbuf)));
+        goto fail;
+    }
+    newfile = NULL;
 
     /* Replace old file with new one */
     if ((status = apr_file_rename(newusersfile, usersfile, r->pool)) != 0) {
@@ -409,6 +422,10 @@ copy:
 
     /* Done updating */
     return found ? AUTH_USER_FOUND : AUTH_USER_NOT_FOUND;
+
+write_error:
+    ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "error writing to new OTP users file \"%s\": %s",
+      newusersfile, apr_strerror(status, errbuf, sizeof(errbuf)));
 
 fail:
     if (file != NULL)
@@ -487,7 +504,7 @@ parse_token_type(const char *type, struct otp_user *tokinfo)
     return 0;
 }
 
-static void
+static apr_status_t
 print_user(apr_file_t *file, const struct otp_user *user)
 {
     const char *pinstr = NULL;
@@ -552,7 +569,7 @@ print_user(apr_file_t *file, const struct otp_user *user)
 #endif
         apr_file_printf(file, " %-7s %s %s", user->last_otp, tbuf, user->last_ip);
     }
-    apr_file_printf(file, "\n");
+    return apr_file_putc('\n', file);
 }
 
 /*
