@@ -64,6 +64,12 @@ AC_CHECK_HEADERS(ctype.h errno.h openssl/evp.h openssl/hmac.h openssl/md5.h stdi
 	[AC_MSG_ERROR([required header file '$ac_header' not found])])
 AC_CHECK_HEADERS(err.h, [], [])
 
+# Command line flags
+AC_ARG_ENABLE(Werror,
+    AC_HELP_STRING([--enable-Werror],
+        [enable compilation with -Werror flag (default NO)]),
+    [test x"$enableval" = "xyes" && CFLAGS="${CFLAGS} -Werror"])
+
 # Generated files
 AC_CONFIG_FILES(Makefile)
 AM_CONFIG_HEADER(config.h)
