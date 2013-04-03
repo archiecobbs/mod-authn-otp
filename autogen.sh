@@ -38,6 +38,8 @@ echo "cleaning up"
 rm -rf .libs autom4te*.cache scripts aclocal.m4 configure config.log config.status .deps stamp-h1
 rm -f otptool *.o *.la *.lo *.slo Makefile.in Makefile
 rm -f mod_authn_otp-?.?.?.tar.gz
+rm -f config.h*
+rm -f TAGS tags
 
 if [ "$1" = "-C" ]; then
     echo "cleanup done, exiting"
