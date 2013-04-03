@@ -1,4 +1,4 @@
-Version Next
+Version 1.1.6 (r130) released 2 Apr 2013
 
     - Detect errors when writing to the new users.txt file
     - Fix (harmless) bug where new users.txt file was not being closed
