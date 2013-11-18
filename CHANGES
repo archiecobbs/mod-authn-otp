@@ -1,3 +1,7 @@
+Version 1.1.7
+
+    - Allow "logout" by sending empty password (issue #24)
+
 Version 1.1.6 (r131) released 2 Apr 2013
 
     - Detect errors when writing to the new users.txt file
