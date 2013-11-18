@@ -775,6 +775,16 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
         return AUTH_DENIED;
     }
 
+    /* Check for a "logout" via empty password */
+    if (*otp_given == '\0' && *user->last_otp != '\0' && *user->last_ip != '\0' && strcmp(user->last_ip, USER_AGENT_IP(r)) == 0) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "logout for user \"%s\" via empty password", user->username);
+
+        /* Forget previous OTP */
+        *user->last_otp = '\0';
+        find_update_user(r, conf->users_file, user, 1);
+        return AUTH_DENIED;
+    }
+
     /* Check PIN prefix (if appropriate) */
     if (user->algorithm != OTP_ALGORITHM_MOTP) {
         char pinbuf[MAX_PIN];
