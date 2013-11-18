@@ -39,6 +39,8 @@ Since HTTP authentication is essentially stateless, there's no actual "login" pr
 
 Actually, in practice there is a way for the server to "logout" the user: by returning a 401 Unauthorized HTTP error code. This will cause the brower to "forget" the username/password pair that it has been using and prompt for a new one. However, this would have to be done at the script level (e.g., via PHP script). Also, this only "logs out" that user's browser. An attacker who was able to use the same one-time password from a different browser within the maximum linger time would still be able to get in.
 
+Starting in version 1.1.7, you can force *mod_authn_otp* to "forget" that you are logged in. To do this, first restart your web browser, which will cause your browser (but not *mod_authn_otp*) to forget your password. Then reconnect to the web server, and when it asks for you to login again, enter your username with an empty password. *mod_authn_otp* will then "forget" (i.e., cancel) your previous one-time password. To prevent denial-of-service attacks, this request must originate from the same IP address as your previous login.
+
 == Digest Authentication DOS Attack ==
 
 In the design of the Apache web server, a module is not able to directly verify the user's password when digest authentication is used. Instead, the module is given the username and realm, and must produce the digest hash using the user's _expected_ password. The server then compares this hash value with the value sent from the client.
