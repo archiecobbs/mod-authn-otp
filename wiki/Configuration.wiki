@@ -157,7 +157,7 @@ This directive changes the behavior when a valid (i.e., known) username but an i
 
 If *mod_authn_otp* is the only authorization provider configured, then the result is the same - access denied. However, if there are other authorization providers configured after *mod_authn_otp*, then setting {{{OTPAuthFallThrough}}} to {{{On}}} will allow those subsequent authorization providers to attempt to authorize the same user using a different password. This can be useful in situations where you want normal humans to use one-time passwords, but also allow automated logins on their behalf from devices that don't support generating one-time passwords. You would then configure a normal username/password authorization provider after *mod_authn_otp* with the fixed (and presumably much longer and harder to remember) device password.
 
-Note that if you use {{{OTPAuthFallThrough}}} and {{{OTPAuthMaxOTPFailure}}} together, then the fall-through password for any username must not have the *mod_authn_otp* PIN for that same username as a prefix, otherwise each login using the fall-through authorization provider will count as an OTP failure against that user's {{OTPAuthMaxOTPFailure}}} limit.
+Note that if you use {{{OTPAuthFallThrough}}} and {{{OTPAuthMaxOTPFailure}}} together, then the fall-through password for any username must not have the *mod_authn_otp* PIN for that same username as a prefix, otherwise each login using the fall-through authorization provider will count as an OTP failure against that user's {{{OTPAuthMaxOTPFailure}}} limit.
 
 The default value for this directive is {{{Off}}}, which means that an invalid password is always immediately rejected.
 
