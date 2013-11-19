@@ -1,6 +1,8 @@
 Version 1.1.7
 
+    - Added "OTPAuthFallThrough" to allow fall through to other auth providers (issue #23)
     - Allow "logout" by sending empty password (issue #24)
+    - Count PINs against OTPAuthMaxOTPFailure even when they have the wrong length
 
 Version 1.1.6 (r131) released 2 Apr 2013
 

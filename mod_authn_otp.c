@@ -90,6 +90,7 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 #define DEFAULT_MAX_OFFSET              4
 #define DEFAULT_MAX_LINGER              (10 * 60)   /* 10 minutes */
 #define DEFAULT_LOGOUT_IP_CHANGE        0
+#define DEFAULT_ALLOW_FALLTHROUGH       0
 
 /* PIN configuration */
 #define PIN_CONFIG_LITERAL              0
@@ -117,6 +118,7 @@ struct otp_config {
     int                 max_linger;             /* Maximum time for which the same OTP can be used repeatedly */
     u_int               max_otp_failures;       /* Maximum wrong OTP values before account becomes locked, or zero for no limit */
     int                 logout_ip_change;       /* Auto-logout user if IP address changes */
+    int                 allow_fallthrough;      /* Allow fall-through if OTP auth fails */
     authn_provider_list *provlist;              /* Authorization providers for checking PINs */
 };
 
@@ -772,7 +774,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
     if (conf->max_otp_failures != 0 && user->num_otp_failures >= conf->max_otp_failures) {
         ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" has reached the maximum wrong OTP limit of %u",
           user->username, conf->max_otp_failures);
-        return AUTH_DENIED;
+        return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
     }
 
     /* Check for a "logout" via empty password */
@@ -782,7 +784,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
         /* Forget previous OTP */
         *user->last_otp = '\0';
         find_update_user(r, conf->users_file, user, 1);
-        return AUTH_DENIED;
+        return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
     }
 
     /* Check PIN prefix (if appropriate) */
@@ -794,7 +796,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
         pinlen = strlen(otp_given) - user->num_digits;
         if (pinlen < 0) {
             ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided a too-short OTP", user->username);
-            return AUTH_DENIED;
+            return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
         }
 
         /* Extract the PIN from the password given */
@@ -802,8 +804,11 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
         otp_given += pinlen;
 
         /* Check the PIN */
-        if ((status = authn_otp_check_pin(r, conf, user, pinbuf)) != AUTH_GRANTED)
+        if ((status = authn_otp_check_pin(r, conf, user, pinbuf)) != AUTH_GRANTED) {
+            if (status == AUTH_DENIED && conf->allow_fallthrough)
+                status = AUTH_USER_NOT_FOUND;
             return status;
+        }
     }
 
     /* Check OTP length */
@@ -909,7 +914,7 @@ fail:
         user->num_otp_failures++;
         find_update_user(r, conf->users_file, user, 1);
     }
-    return AUTH_DENIED;
+    return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
 }
 
 /*
@@ -946,7 +951,7 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
     if (conf->max_otp_failures != 0 && user->num_otp_failures >= conf->max_otp_failures) {
         ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" has reached the maximum wrong OTP limit of %u",
           user->username, conf->max_otp_failures);
-        return AUTH_DENIED;
+        return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
     }
 
     /* The user's PIN must be known to us */
@@ -1038,6 +1043,7 @@ get_config(request_rec *r)
     conf->max_linger = dir_conf->max_linger;
     conf->max_otp_failures = dir_conf->max_otp_failures;
     conf->logout_ip_change = dir_conf->logout_ip_change;
+    conf->allow_fallthrough = dir_conf->allow_fallthrough;
     copy_provider_list(r->pool, &conf->provlist, dir_conf->provlist);
 
     /* Apply defaults for any unset values */
@@ -1047,6 +1053,8 @@ get_config(request_rec *r)
         conf->max_linger = DEFAULT_MAX_LINGER;
     if (conf->logout_ip_change == -1)
         conf->logout_ip_change = DEFAULT_LOGOUT_IP_CHANGE;
+    if (conf->allow_fallthrough == -1)
+        conf->allow_fallthrough = DEFAULT_ALLOW_FALLTHROUGH;
 
     /* Done */
     return conf;
@@ -1065,6 +1073,7 @@ create_authn_otp_dir_config(apr_pool_t *p, char *d)
     conf->max_linger = -1;
     conf->max_otp_failures = 0;
     conf->logout_ip_change = -1;
+    conf->allow_fallthrough = -1;
     conf->provlist = NULL;
     return conf;
 }
@@ -1084,6 +1093,7 @@ merge_authn_otp_dir_config(apr_pool_t *p, void *base_conf, void *new_conf)
     conf->max_linger = conf2->max_linger != -1 ? conf2->max_linger : conf1->max_linger;
     conf->max_otp_failures = conf2->max_otp_failures != 0 ? conf2->max_otp_failures : conf1->max_otp_failures;
     conf->logout_ip_change = conf2->logout_ip_change != -1 ? conf2->logout_ip_change : conf1->logout_ip_change;
+    conf->allow_fallthrough = conf2->allow_fallthrough != -1 ? conf2->allow_fallthrough : conf1->allow_fallthrough;
     copy_provider_list(p, &conf->provlist, conf2->provlist != NULL ? conf2->provlist : conf1->provlist);
     return conf;
 }
@@ -1188,6 +1198,11 @@ static const command_rec authn_otp_cmds[] =
         NULL,
         OR_AUTHCFG,
         "specify auth provider(s) to be used for PIN verification for a directory or location"),
+    AP_INIT_FLAG("OTPAuthFallThrough",
+        ap_set_flag_slot,
+        (void *)APR_OFFSETOF(struct otp_config, allow_fallthrough),
+        OR_AUTHCFG,
+        "allow failed auth attempts to fall through to the next auth provider (if any)"),
     { NULL }
 };
 
