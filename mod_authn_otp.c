@@ -815,7 +815,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
     if (strlen(otp_given) != user->num_digits) {
         ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" OTP has the wrong length %d != %d",
           user->username, (int)strlen(otp_given), user->num_digits);
-        goto fail;
+        return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
     }
 
     /* Check for reuse of previous OTP */
@@ -914,7 +914,7 @@ fail:
         user->num_otp_failures++;
         find_update_user(r, conf->users_file, user, 1);
     }
-    return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
+    return AUTH_DENIED;
 }
 
 /*
