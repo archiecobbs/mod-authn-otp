@@ -113,7 +113,7 @@ To set a PIN in {{{/etc/pins}}}, you would use the {{{htpasswd}}} command like y
 
 Apache allows you to configure multiple authentication providers in the {{{AuthBasicProvider}}} directive along with the {{{OTP}}} provider. If you specify the same provider in the {{{AuthBasicProvider}}} directive (along with {{{OTP}}}) as well as in the {{{OTPAuthPINAuthProvider}}} directive, then there will be a configuration directive conflict. In other words, the other provider-specific configuration directives for that provider will get used twice, once for HTTP basic authentication and again for OTP PIN verification; this is probably not what you want. For example if you specified {{{AuthBasicProvider OTP file}}}, {{{OTPAuthPINAuthProvider file}}}, and {{{AuthUserFile "/etc/pins"}}}, then {{{/etc/pins}}} would be used both for normal HTTP basic authentication and OTP PIN verification, so a user could login with just their PIN (because the {{{file}}} provider would accept it).
 
-In order to avoid these problems, use authentication provider aliases. This functionality is provided by the [http://httpd.apache.org/docs/2.2/mod/mod_authn_alias.html mod_authn_alias] module. Here is an example:
+In order to avoid these problems, use authentication provider aliases (in Apache versions prior to 2.4, this functionality is provided by the [http://httpd.apache.org/docs/2.2/mod/mod_authn_alias.html mod_authn_alias] module). Here is an example:
 
 {{{
 # Create the "my-pin" authn provider based on the "file" authn provider
