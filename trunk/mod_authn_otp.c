@@ -691,11 +691,13 @@ authn_otp_check_pin_external(request_rec *r, struct otp_config *const conf, cons
           username, pentry->provider_name);
         break;
     case AUTH_DENIED:
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" gave incorrect PIN according to PIN auth provider \"%s\"",
+        ap_log_rerror(APLOG_MARK, conf->allow_fallthrough ? APLOG_INFO : APLOG_NOTICE, 0, r,
+          "user \"%s\" gave incorrect PIN according to PIN auth provider \"%s\"",
           username, pentry->provider_name);
         break;
     case AUTH_USER_NOT_FOUND:
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" is not known by any configured PIN auth provider", username);
+        ap_log_rerror(APLOG_MARK, conf->allow_fallthrough ? APLOG_INFO : APLOG_NOTICE, 0, r,
+          "user \"%s\" is not known by any configured PIN auth provider", username);
         break;
     case AUTH_GENERAL_ERROR:                        /* assume the auth provider logged something interesting */
         break;
@@ -721,7 +723,7 @@ authn_otp_check_pin(request_rec *r, struct otp_config *const conf, struct otp_us
     switch (user->pincfg) {
     case PIN_CONFIG_NONE:                               /* User has no PIN, so provided PIN must be the empty string */
         if (*pin != '\0') {
-            ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r,
+            ap_log_rerror(APLOG_MARK, conf->allow_fallthrough ? APLOG_INFO : APLOG_NOTICE, 0, r,
               "user \"%s\" supplied a PIN but none is configured in the users file", user->username);
             return AUTH_DENIED;
         }
@@ -730,7 +732,8 @@ authn_otp_check_pin(request_rec *r, struct otp_config *const conf, struct otp_us
         return authn_otp_check_pin_external(r, conf, user->username, pin);
     case PIN_CONFIG_LITERAL:                            /* User's PIN was given explicitly in the users file */
         if (strcmp(pin, user->pin) != 0) {
-            ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" PIN does not match value in users file", user->username);
+            ap_log_rerror(APLOG_MARK, conf->allow_fallthrough ? APLOG_INFO : APLOG_NOTICE, 0, r,
+              "user \"%s\" PIN does not match value in users file", user->username);
             return AUTH_DENIED;
         }
         return AUTH_GRANTED;
@@ -779,7 +782,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
 
     /* Check for a "logout" via empty password */
     if (*otp_given == '\0' && *user->last_otp != '\0' && *user->last_ip != '\0' && strcmp(user->last_ip, USER_AGENT_IP(r)) == 0) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "logout for user \"%s\" via empty password", user->username);
+        ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "logout for user \"%s\" via empty password", user->username);
 
         /* Forget previous OTP */
         *user->last_otp = '\0';
@@ -795,7 +798,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
         /* Determine the length of the PIN that the user supplied */
         pinlen = strlen(otp_given) - user->num_digits;
         if (pinlen < 0) {
-            ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided a too-short OTP", user->username);
+            ap_log_rerror(APLOG_MARK, conf->allow_fallthrough ? APLOG_INFO : APLOG_NOTICE, 0, r, "user \"%s\" provided a too-short OTP", user->username);
             return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
         }
 
@@ -813,7 +816,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
 
     /* Check OTP length */
     if (strlen(otp_given) != user->num_digits) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" OTP has the wrong length %d != %d",
+        ap_log_rerror(APLOG_MARK, conf->allow_fallthrough ? APLOG_INFO : APLOG_NOTICE, 0, r, "user \"%s\" OTP has the wrong length %d != %d",
           user->username, (int)strlen(otp_given), user->num_digits);
         return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
     }
