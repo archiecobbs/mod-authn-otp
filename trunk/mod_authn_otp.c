@@ -160,13 +160,16 @@ static void         register_hooks(apr_pool_t *p);
 /* Powers of ten */
 static const int    powers10[] = { 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 1000000000 };
 
+/* Mutex to augment file locking for multi-threaded processes */
+static apr_thread_mutex_t *mutex;
+
 /*
  * Find/update a user in the users file.
  *
  * Note: finding, the "user" structure must be initialized with zeroes.
  */
 static authn_status
-find_update_user(request_rec *r, const char *usersfile, struct otp_user *const user, int update)
+find_update_user(request_rec *r, const char *usersfile, struct otp_user *const user, const int update)
 {
     char invalid_reason[128];
     char newusersfile[APR_PATH_MAX];
@@ -176,11 +179,12 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
     apr_file_t *newfile = NULL;
     apr_file_t *lockfile = NULL;
     apr_status_t status;
+    int got_mutex = 0;
     char errbuf[64];
     int found = 0;
     int linenum;
 
-    /* If updating, open and lock lockfile */
+    /* If updating, open and lock lockfile and grab mutex */
     if (update) {
         apr_snprintf(lockusersfile, sizeof(lockusersfile), "%s%s", usersfile, LOCKFILE_SUFFIX);
         if ((status = apr_file_open(&lockfile, lockusersfile,
@@ -194,6 +198,15 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
               lockusersfile, apr_strerror(status, errbuf, sizeof(errbuf)));
             goto fail;
         }
+        if (mutex == NULL) {
+            ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "can't acquire OTP mutex: %s", "no mutex exists");
+            goto fail;
+        }
+        if ((status = apr_thread_mutex_lock(mutex)) != 0) {
+            ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "can't acquire OTP mutex: %s", apr_strerror(status, errbuf, sizeof(errbuf)));
+            goto fail;
+        }
+        got_mutex = 1;
     }
 
     /* Open existing users file */
@@ -377,6 +390,7 @@ found:
         AP_DEBUG_ASSERT(!update);
         AP_DEBUG_ASSERT(newfile == NULL);
         AP_DEBUG_ASSERT(lockfile == NULL);
+        AP_DEBUG_ASSERT(!got_mutex);
         apr_file_close(file);
         return AUTH_USER_FOUND;
 
@@ -418,9 +432,11 @@ copy:
         goto fail;
     }
 
-    /* Close (and implicitly unlock) lock file */
+    /* Close (and implicitly unlock) lock file and release mutex */
     apr_file_close(lockfile);
     lockfile = NULL;
+    AP_DEBUG_ASSERT(got_mutex);
+    apr_thread_mutex_unlock(mutex);
 
     /* Done updating */
     return found ? AUTH_USER_FOUND : AUTH_USER_NOT_FOUND;
@@ -438,6 +454,8 @@ fail:
     }
     if (lockfile != NULL)
         apr_file_close(lockfile);
+    if (got_mutex)
+        apr_thread_mutex_unlock(mutex);
     return AUTH_GENERAL_ERROR;
 }
 
@@ -1166,6 +1184,14 @@ static void
 register_hooks(apr_pool_t *p)
 {
     ap_register_provider(p, AUTHN_PROVIDER_GROUP, OTP_AUTHN_PROVIDER_NAME, AUTHN_PROVIDER_VERSION, &authn_otp_provider);
+    apr_status_t status;
+    char errbuf[64];
+
+    /* Initialize mutex */
+    if (mutex == NULL && (status = apr_thread_mutex_create(&mutex, APR_THREAD_MUTEX_DEFAULT, p)) != 0) {
+        ap_log_perror(APLOG_MARK, APLOG_ERR, 0, p, "can't create OTP mutex: %s", apr_strerror(status, errbuf, sizeof(errbuf)));
+        return;
+    }
 }
 
 /* Configuration directives */

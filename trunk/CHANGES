@@ -1,3 +1,7 @@
+Version Next
+
+    - Fixed bug where users file could get deleted when using Apache worker MPM (issue #22)
+
 Version 1.1.7
 
     - Added "OTPAuthFallThrough" to allow fall through to other auth providers (issue #23)
