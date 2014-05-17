@@ -1,9 +1,7 @@
-Version Next
+
+Version 1.1.7 (r147) released 17 May 2014
 
     - Fixed bug where users file could get deleted when using Apache worker MPM (issue #22)
-
-Version 1.1.7
-
     - Added "OTPAuthFallThrough" to allow fall through to other auth providers (issue #23)
     - Allow "logout" by sending empty password (issue #24)
     - Count PINs against OTPAuthMaxOTPFailure even when they have the wrong length
