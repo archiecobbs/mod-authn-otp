@@ -26,6 +26,7 @@ module: mod_authn_otp.c
 		$(APXS) -c -D_REENTRANT `echo $(GCC_WARN_FLAGS) | sed 's/ -/ -Wc,-/g'` -l crypto mod_authn_otp.c
 
 install-exec-local: module
+		mkdir -p "$(DESTDIR)`$(APXS) -q LIBEXECDIR`"
 		$(APXS) -S LIBEXECDIR="$(DESTDIR)`$(APXS) -q LIBEXECDIR`" -i mod_authn_otp.la
 
 install-exec-hook:
