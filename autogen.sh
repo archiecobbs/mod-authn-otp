@@ -17,8 +17,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# $Id$
-#
 
 #
 # Script to regenerate all the GNU auto* gunk.

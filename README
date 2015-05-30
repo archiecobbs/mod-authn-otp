@@ -27,6 +27,5 @@ Also included is otptool, a one-time password command line utility.
 
 For configuration information and other details please see:
 
-    http://mod-authn-otp.googlecode.com/
+    https://github.com/archiecobbs/mod-authn-otp
 
-$Id$

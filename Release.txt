@@ -6,23 +6,19 @@ Final check
 
 Release tarball
     sh autogen.sh -C
-    svn update
-    svn status
     verify everything is clean
     verify configure.ac contains VERSION
     update CHANGES with today's date and next revision R=R+1 for VERSION
-    svn commit -> revision R+1
-    svn update
+    commit -> revision R+1
     sh autogen.sh -c && make distcheck
-    upload tarball to http://code.google.com/p/mod-authn-otp/downloads/list
+    upload tarball to Amazon AWS
 
 Tag release
-    svn cp https://mod-authn-otp.googlecode.com/svn/trunk https://mod-authn-otp.googlecode.com/svn/tags/VERSION
+    git tag ... VERSION
 
 mod-authn-otp project
     update users file sample in UsersFile wiki page
     update any new configuration directives in Configuration wiki page
-    Add new version to issue tracker: http://code.google.com/p/mod-authn-otp/adminIssues
 
 OBS
     update mod-authn-otp.spec
@@ -30,6 +26,4 @@ OBS
 
 Bump version
     edit configure.ac and set version to VERSION + 1
-    svn commit
-
-$Id$
+    commit

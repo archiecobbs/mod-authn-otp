@@ -16,15 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# $Id$
-#
 
-AC_INIT([mod_authn_otp Apache2 authentication module supporting one-time passwords], [1.1.8], [http://mod-auth-otp.googlecode.com/], [mod_authn_otp])
+AC_INIT([mod_authn_otp Apache2 authentication module supporting one-time passwords], [1.1.8], [https://github.com/archiecobbs/mod-authn-otp], [mod_authn_otp])
 AC_CONFIG_AUX_DIR(scripts)
 AM_INIT_AUTOMAKE
 dnl AM_MAINTAINER_MODE
 AC_PREREQ(2.59)
-AC_REVISION($Id$)
 AC_PREFIX_DEFAULT(/usr)
 AC_PROG_MAKE_SET
 
