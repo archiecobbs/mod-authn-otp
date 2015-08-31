@@ -26,7 +26,7 @@ static const int    powers10[] = { 10, 100, 1000, 10000, 100000, 1000000, 100000
  * Generate an OTP using the algorithm specified in RFC 4226,
  */
 void
-hotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen)
+hotp(const u_char *key, size_t keylen, uint64_t counter, int ndigits, char *buf10, char *buf16, size_t buflen)
 {
     const int max10 = sizeof(powers10) / sizeof(*powers10);
     const int max16 = 8;

@@ -22,6 +22,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -73,7 +74,7 @@
 #define DEFAULT_WINDOW              0
 
 /* hotp.c */
-extern void         hotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen);
+extern void         hotp(const u_char *key, size_t keylen, uint64_t counter, int ndigits, char *buf10, char *buf16, size_t buflen);
 
 /* motp.c */
 extern void         motp(const u_char *key, size_t keylen, const char *pin, u_long counter, int ndigits, char *buf, size_t buflen);

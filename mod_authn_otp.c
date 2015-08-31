@@ -139,7 +139,7 @@ struct otp_user {
 
 /* Internal functions */
 static authn_status find_update_user(request_rec *r, const char *usersfile, struct otp_user *const user, int update);
-static void         hotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen);
+static void         hotp(const u_char *key, size_t keylen, uint64_t counter, int ndigits, char *buf10, char *buf16, size_t buflen);
 static void         motp(const u_char *key, size_t keylen, const char *pin, u_long counter, int ndigits, char *buf, size_t buflen);
 static int          parse_token_type(const char *type, struct otp_user *tokinfo);
 static apr_status_t print_user(apr_file_t *file, const struct otp_user *user);
@@ -594,7 +594,7 @@ print_user(apr_file_t *file, const struct otp_user *user)
  * Generate an OTP using the algorithm specified in RFC 4226,
  */
 static void
-hotp(const u_char *key, size_t keylen, u_long counter, int ndigits, char *buf10, char *buf16, size_t buflen)
+hotp(const u_char *key, size_t keylen, uint64_t counter, int ndigits, char *buf10, char *buf16, size_t buflen)
 {
     const int max10 = sizeof(powers10) / sizeof(*powers10);
     const int max16 = 8;
