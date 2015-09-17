@@ -14,10 +14,10 @@ Also included is **otptool**, a one-time password command line utility. **otptoo
 
 See the wiki for a detailed description including supported Apache configuration directives.
 
-  * [Configuration](Configuration): How to configure the Apache 2.x server
-  * [OneTimePasswords](OneTimePasswords): How one-time passwords work and how they integrate with HTTP authentication
-  * [Tokens](Tokens): Getting tokens for use with **mod\_authn\_otp**
-  * [UsersFile](UsersFile): The users database
-  * [DigestAuthentication](DigestAuthentication): Limitations of **mod\_authn\_otp** when used with HTTP digest authentication
-  * [SecurityConsiderations](SecurityConsiderations): Security considerations when using one-time passwords for HTTP authentication
-  * [OTPTool](OTPTool): Man page for the **otptool** command line utility
+  * [Configuration](https://github.com/archiecobbs/mod-authn-otp/wiki/Configuration): How to configure the Apache 2.x server
+  * [OneTimePasswords](https://github.com/archiecobbs/mod-authn-otp/wiki/OneTimePasswords): How one-time passwords work and how they integrate with HTTP authentication
+  * [Tokens](https://github.com/archiecobbs/mod-authn-otp/wiki/Tokens): Getting tokens for use with **mod\_authn\_otp**
+  * [UsersFile](https://github.com/archiecobbs/mod-authn-otp/wiki/UsersFile): The users database
+  * [DigestAuthentication](https://github.com/archiecobbs/mod-authn-otp/wiki/DigestAuthentication): Limitations of **mod\_authn\_otp** when used with HTTP digest authentication
+  * [SecurityConsiderations](https://github.com/archiecobbs/mod-authn-otp/wiki/SecurityConsiderations): Security considerations when using one-time passwords for HTTP authentication
+  * [OTPTool](https://github.com/archiecobbs/mod-authn-otp/wiki/OTPTool): Man page for the **otptool** command line utility
