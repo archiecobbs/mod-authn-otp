@@ -45,6 +45,7 @@ Finally, configure the **mod\_authn\_otp** specific directives:
 | **OTPAuthPINAuthProvider** | List     | Empty       | No            | One or more [authentication providers](http://httpd.apache.org/docs/2.2/howto/auth.html) to be used for external PIN verification |
 | **OTPAuthMaxOTPFailure** | Number   | None        | No            | Maximum number of consecutive wrong OTP values before account is locked out |
 | **OTPAuthFallThrough** | Boolean  | Off         | No            | Allow invalid login attempts to fall through to the next authorization provider |
+| **PINFakeBasicAuth** | Boolean | Off            | No            | Send the Username and PIN in a Basic Authentication Header for backend requests |
 
 A detailed description of each directive follows.
 
@@ -160,3 +161,31 @@ Note: fall-through to a subsequent authorization provider only occurs when the s
 The default value for this directive is `Off`, which means that an invalid password causes an immediate rejection.
 
 This configuration directive is supported in versions 1.1.7 or later of **mod\_authn\_otp**.
+
+### PINFakeBasicAuth ###
+This directive sets the `Authorization` header in the request config for backend requests. This is useful for situations where the PIN is a common password for backend proxied services. For example, a backend service may use LDAP authentication against a common LDAP server.
+
+Here is an example configuration for OTP and htpasswd verification:
+```
+<Location /protected/service>
+
+  # Configure Basic Authentication
+  AuthType Basic
+  AuthName "OTP"
+  AuthBasicProvider OTP
+  Require valid-user
+
+  # Configure PIN authentication
+  OTPAuthUsersFile "/var/www/OTPpasswd"
+  OTPAuthPINAuthProvider file
+  AuthUserFile "/var/www/htpasswd"
+
+  # Pass Basic Authentication to backend service
+  PINFakeBasicAuth On
+
+  # Configure request proxying to backend service
+  ProxyPass http://backend.internal/
+</Location
+```
+This configuration directive is supported in versions 1.2.0 or later of **mod\_authn\_otp**.
+
