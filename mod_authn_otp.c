@@ -21,6 +21,7 @@
 #include "ap_config.h"
 #include "ap_provider.h"
 #include "mod_auth.h"
+#include "apr_base64.h"
 
 // Fix libapr pollution
 #undef PACKAGE_BUGREPORT
@@ -89,6 +90,7 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 #define DEFAULT_MAX_LINGER              (10 * 60)   /* 10 minutes */
 #define DEFAULT_LOGOUT_IP_CHANGE        0
 #define DEFAULT_ALLOW_FALLTHROUGH       0
+#define DEFAULT_PIN_FAKE_BASIC_AUTH     0
 
 /* PIN configuration */
 #define PIN_CONFIG_LITERAL              0
@@ -118,6 +120,7 @@ struct otp_config {
     int                 logout_ip_change;       /* Auto-logout user if IP address changes */
     int                 allow_fallthrough;      /* Allow fall-through if OTP auth fails */
     authn_provider_list *provlist;              /* Authorization providers for checking PINs */
+    int                 pin_fake_basic_auth;    /* Emulate basic authentication with username and PIN */
 };
 
 /* User info structure */
@@ -144,6 +147,7 @@ static void         motp(const u_char *key, size_t keylen, const char *pin, u_lo
 static int          parse_token_type(const char *type, struct otp_user *tokinfo);
 static apr_status_t print_user(apr_file_t *file, const struct otp_user *user);
 static void         printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digits);
+static void         pin_fake_basic_auth(request_rec *r, const char *user, const char *pin);
 static authn_status authn_otp_check_pin(request_rec *r, struct otp_config *const conf, struct otp_user *const user, const char *pin);
 static authn_status authn_otp_check_pin_external(request_rec *r, struct otp_config *const conf, const char *user, const char *pin);
 static authn_status authn_otp_check_password(request_rec *r, const char *username, const char *password);
@@ -675,6 +679,20 @@ printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digi
 }
 
 /*
+ * Insert fake Basic Authentication Header for PIN
+ */
+static void
+pin_fake_basic_auth(request_rec *r, const char *user, const char *pin){
+    char *basic = apr_pstrcat(r->pool, user, ":", pin, NULL);
+    apr_size_t size = (apr_size_t) strlen(basic);
+    char *base64 = apr_palloc(r->pool,
+                              apr_base64_encode_len(size + 1) * sizeof(char));
+    apr_base64_encode(base64, basic, size);
+    apr_table_setn(r->headers_in, "Authorization",
+                   apr_pstrcat(r->pool, "Basic ", base64, NULL));
+}
+
+/*
  * Verify PIN using an external authn provider configured via "OTPAuthPINAuthProvider".
  */
 static authn_status
@@ -828,6 +846,10 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
                 status = AUTH_USER_NOT_FOUND;
             return status;
         }
+
+        /* Insert Basic Authentication header if PINFakeBasicAuth is set */
+        if (conf->pin_fake_basic_auth)
+	    pin_fake_basic_auth(r, user->username, pinbuf);
     }
 
     /* Check OTP length */
@@ -1064,6 +1086,7 @@ get_config(request_rec *r)
     conf->logout_ip_change = dir_conf->logout_ip_change;
     conf->allow_fallthrough = dir_conf->allow_fallthrough;
     copy_provider_list(r->pool, &conf->provlist, dir_conf->provlist);
+    conf->pin_fake_basic_auth = dir_conf->pin_fake_basic_auth;
 
     /* Apply defaults for any unset values */
     if (conf->max_offset == -1)
@@ -1074,6 +1097,8 @@ get_config(request_rec *r)
         conf->logout_ip_change = DEFAULT_LOGOUT_IP_CHANGE;
     if (conf->allow_fallthrough == -1)
         conf->allow_fallthrough = DEFAULT_ALLOW_FALLTHROUGH;
+    if (conf->pin_fake_basic_auth == -1)
+        conf->pin_fake_basic_auth = DEFAULT_PIN_FAKE_BASIC_AUTH;
 
     /* Done */
     return conf;
@@ -1094,6 +1119,7 @@ create_authn_otp_dir_config(apr_pool_t *p, char *d)
     conf->logout_ip_change = -1;
     conf->allow_fallthrough = -1;
     conf->provlist = NULL;
+    conf->pin_fake_basic_auth = -1;
     return conf;
 }
 
@@ -1114,6 +1140,7 @@ merge_authn_otp_dir_config(apr_pool_t *p, void *base_conf, void *new_conf)
     conf->logout_ip_change = conf2->logout_ip_change != -1 ? conf2->logout_ip_change : conf1->logout_ip_change;
     conf->allow_fallthrough = conf2->allow_fallthrough != -1 ? conf2->allow_fallthrough : conf1->allow_fallthrough;
     copy_provider_list(p, &conf->provlist, conf2->provlist != NULL ? conf2->provlist : conf1->provlist);
+    conf->pin_fake_basic_auth = conf2->pin_fake_basic_auth != -1 ? conf2->pin_fake_basic_auth : conf1->pin_fake_basic_auth;
     return conf;
 }
 
@@ -1230,6 +1257,11 @@ static const command_rec authn_otp_cmds[] =
         (void *)APR_OFFSETOF(struct otp_config, allow_fallthrough),
         OR_AUTHCFG,
         "allow failed auth attempts to fall through to the next auth provider (if any)"),
+    AP_INIT_FLAG("PINFakeBasicAuth",
+        ap_set_flag_slot,
+        (void *)APR_OFFSETOF(struct otp_config, pin_fake_basic_auth),
+        OR_AUTHCFG,
+        "pass through authentication to the rest of the server as a basic authentication header"),
     { NULL }
 };
 
