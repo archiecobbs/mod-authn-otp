@@ -889,7 +889,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
         window_start = 1;
         window_stop = conf->max_offset;
     } else {
-        counter = (int)now / user->time_interval + user->offset;
+        counter = (int)(now / user->time_interval) + user->offset;
         window_start = -conf->max_offset;
         window_stop = conf->max_offset;
 
@@ -1025,7 +1025,7 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
         }
 
         /* Get expected counter value */
-        counter = user->time_interval == 0 ? user->offset : (int)now / user->time_interval + user->offset;
+        counter = user->time_interval == 0 ? user->offset : (int)(now / user->time_interval) + user->offset;
 
         /* Generate OTP using expected counter */
         ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "generating digest hash for \"%s\" assuming OTP counter %d",
