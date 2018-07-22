@@ -27,38 +27,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#ifdef HAVE_ERR_H
-#include <err.h>
-#else
-#define err(E, FMT...)          do {                                                \
-                                    int _esave = (errno);                           \
-                                    fprintf(stderr, "%s: ", PROG_NAME);             \
-                                    fprintf(stderr, FMT);                           \
-                                    fprintf(stderr, ": %s\n", strerror(_esave));    \
-                                    exit(E);                                        \
-                                } while (0)
-#define errx(E, FMT...)         do {                                                \
-                                    fprintf(stderr, "%s: ", PROG_NAME);             \
-                                    fprintf(stderr, FMT);                           \
-                                    fprintf(stderr, "\n");                          \
-                                    exit(E);                                        \
-                                } while (0)
-#define warn(FMT...)            do {                                                \
-                                    int _esave = (errno);                           \
-                                    fprintf(stderr, "%s: ", PROG_NAME);             \
-                                    fprintf(stderr, FMT);                           \
-                                    fprintf(stderr, ": %s\n", strerror(_esave));    \
-                                } while (0)
-#define warnx(FMT...)           do {                                                \
-                                    fprintf(stderr, "%s: ", PROG_NAME);             \
-                                    fprintf(stderr, FMT);                           \
-                                    fprintf(stderr, "\n");                          \
-                                } while (0)
-#endif
-
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
+
+#include "errinc.h"
 
 /* Program name */
 #define PROG_NAME                   "otptool"

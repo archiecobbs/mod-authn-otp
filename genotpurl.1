@@ -1,0 +1,112 @@
+.\"  -*- nroff -*-
+.\"
+.\" genotpurl - Generate Google Authenticator URLs
+.\"
+.\" Copyright 2009 Archie L. Cobbs <archie@dellroad.org>
+.\"
+.\" Licensed under the Apache License, Version 2.0 (the "License");
+.\" you may not use this file except in compliance with the License.
+.\" You may obtain a copy of the License at
+.\"
+.\"     http://www.apache.org/licenses/LICENSE-2.0
+.\"
+.\" Unless required by applicable law or agreed to in writing, software
+.\" distributed under the License is distributed on an "AS IS" BASIS,
+.\" WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\" See the License for the specific language governing permissions and
+.\" limitations under the License.
+.\"/
+.Dd July 21, 2018
+.Dt GENOTPURL 1
+.Os
+.Sh NAME
+.Nm genotpurl
+.Nd Generate Google Authenticator URLs
+.Sh SYNOPSIS
+.Nm genotpurl
+.Bk -words
+.Fl I Ar issuer
+.Fl L Ar label
+.Op Fl k Ar key
+.Op Fl i
+.Op Fl c Ar counter
+.Op Fl d Ar num-digits
+.Op Fl p Ar period
+.Ek
+.Sh DESCRIPTION
+.Nm
+is a utility for generating URLs for the Google Authenticator cell phone app, which
+generates one-time passwords compatible with the HOTP/OATH algorithm defined by RFC 4226.
+When such and URL is clicked on a cell phone, the token is automatically installed
+into the Google Authenticator app. This is a convenient way to deploy such tokens.
+.Pp
+The
+.Ar issuer
+and
+.Ar label
+are required; these strings are displayed in the app along with the current token value.
+.Pp
+The
+.Ar key
+is the token's binary secret key and is specified as a hexadecimal string.
+If no
+.Ar key
+is given,
+.Nm
+generates a random key and prints it to standard output.
+.Pp
+The
+.Fl i ,
+.Fl c ,
+.Fl d ,
+and
+.Fl p
+flags allow creation of non-standard tokens, but these may not be supported by Google Authenticator.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl c
+Specify the starting target counter value for the one-time password generation.
+This flag is incompatible with the
+.Fl t
+flag.
+.It Fl d
+Specify the number of digits in the one-time password.
+The default value is six.
+.It Fl h
+Print the usage message and exit successfully.
+.It Fl I
+Specify token issuer (e.g., "Example Industries, Inc.")
+.It Fl i
+Create an interval-based token instead of a time-based token.
+.It Fl k
+Specify the token binary secret key as a hexadecimal string.
+.Pp
+If no
+.Ar key
+is given,
+.Nm
+generates a random key and prints it to standard output.
+.It Fl L
+Specify token label (e.g., "user@example.com")
+.It Fl p
+Specify the length of a single time interval in seconds.
+The default value is 30 seconds.
+Ignored if
+.Fl i
+is given.
+.El
+.Sh SEE ALSO
+.Rs
+.%T "mod_authn_otp: Apache module for one-time password authentication"
+.%O "https://github.com/archiecobbs/mod-authn-otp"
+.Re
+.Rs
+.%T "Google Authenticator (iOS)"
+.%O "https://itunes.apple.com/us/app/google-authenticator/id388497605?mt=8"
+.Re
+.Rs
+.%T "Google Authenticator (Android)"
+.%O "https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2&hl=en_US"
+.Re
+.Sh AUTHOR
+.An Archie L. Cobbs Aq archie@dellroad.org
