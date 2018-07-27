@@ -32,14 +32,16 @@ main(int argc, char **argv)
     const char *key = NULL;
     const char *motp_pin = NULL;
     unsigned char keybuf[128];
+    unsigned char filebuf[520];
     char otpbuf10[OTP_BUF_SIZE];
     char otpbuf16[OTP_BUF_SIZE];
-    size_t keylen;
+    size_t keylen = -1;
     int time_interval = DEFAULT_TIME_INTERVAL;
     int ndigits = -1;
     int counter_start;
     int counter_stop;
     int read_from_file = 0;
+    int parse_ascii_key = 1;
     int counter = -1;
     int use_time = 0;
     int window = 0;
@@ -47,7 +49,7 @@ main(int argc, char **argv)
     int i;
 
     /* Parse command line */
-    while ((ch = getopt(argc, argv, "c:d:fhi:m:tvw:")) != -1) {
+    while ((ch = getopt(argc, argv, "c:d:fFhi:m:tvw:")) != -1) {
         switch (ch) {
         case 'c':
             if (use_time)
@@ -61,8 +63,13 @@ main(int argc, char **argv)
             if (ndigits < 1)
                 errx(EXIT_USAGE_ERROR, "invalid digit count `%s'", optarg);
             break;
+        case 'F':
+            read_from_file = 1;
+            parse_ascii_key = 1;
+            break;
         case 'f':
             read_from_file = 1;
+            parse_ascii_key = 0;
             break;
         case 'h':
             usage();
@@ -114,19 +121,37 @@ main(int argc, char **argv)
     if (ndigits == -1)
         ndigits = DEFAULT_NUM_DIGITS;
 
-    /* Read or parse key */
+    /* Read from file if needed */
     if (read_from_file) {
         FILE *fp;
+        size_t len;
 
+        /* Read data */
         if ((fp = fopen(key, "rb")) == NULL)
             err(EXIT_SYSTEM_ERROR, "error reading `%s'", key);
-        keylen = fread(keybuf, 1, sizeof(keybuf), fp);
+        len = fread(filebuf, 1, sizeof(filebuf) - 1, fp);
         if (ferror(fp))
             err(EXIT_SYSTEM_ERROR, "error reading `%s'", key);
         if (!feof(fp))
             errx(EXIT_SYSTEM_ERROR, "error reading `%s': %s", key, "key is too long");
         fclose(fp);
-    } else {
+
+        /* Optionally parse file content as ASCII */
+        if (parse_ascii_key) {
+            filebuf[len] = 0;
+            while (len > 0 && isspace(filebuf[len - 1]))        /* trim whitespace */
+                filebuf[--len] = 0;
+            key = (char *)filebuf;
+        } else {
+            if (len > sizeof(keybuf))
+                errx(EXIT_SYSTEM_ERROR, "error reading `%s': %s", key, "key is too long");
+            memcpy(keybuf, filebuf, len);
+            keylen = len;
+        }
+    }
+
+    /* Parse key */
+    if (parse_ascii_key) {
         for (keylen = 0; keylen < sizeof(keybuf) && key[keylen * 2] != '\0'; keylen++) {
             const char *s = &key[keylen * 2];
             int nibs[2];
@@ -202,10 +227,11 @@ match:
 static void
 usage()
 {
-    fprintf(stderr, "Usage: %s [-fht] [-c counter] [-d digits] [-i interval] [-m PIN] [-w window] key [otp]\n", PROG_NAME);
+    fprintf(stderr, "Usage: %s [-Ffht] [-c counter] [-d digits] [-i interval] [-m PIN] [-w window] key [otp]\n", PROG_NAME);
     fprintf(stderr, "Options:\n");
     fprintf(stderr, "  -c\tSpecify the initial counter value (conflicts with `-t')\n");
-    fprintf(stderr, "  -f\t`key' refers to the file containing the key\n");
+    fprintf(stderr, "  -F\t`key' refers to the file containing the key in hexadecimal format\n");
+    fprintf(stderr, "  -f\t`key' refers to the file containing the key in binary format\n");
     fprintf(stderr, "  -h\tDisplay this usage message\n");
     fprintf(stderr, "  -i\tSpecify time interval in seconds (default %d)\n", DEFAULT_TIME_INTERVAL);
     fprintf(stderr, "  -m\tUse mOTP algorithm with given PIN; also implies `-d 6' and `-i 10'\n");

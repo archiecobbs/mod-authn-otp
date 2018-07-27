@@ -25,7 +25,7 @@
 .Sh SYNOPSIS
 .Nm otptool
 .Bk -words
-.Op Fl fht
+.Op Fl Ffht
 .Op Fl c Ar counter
 .Op Fl d Ar #digits
 .Op Fl i Ar secs
@@ -41,7 +41,12 @@ created using the HOTP/OATH algorithm defined by RFC 4226.
 .Pp
 The
 .Ar key
-is the token's binary secret key and is specified as a hexadecimal string.
+is the token's binary secret key and may be specified on the command line as a hexadecimal string,
+or read from a file using the
+.Fl F
+or
+.Fl f
+flag.
 .Pp
 If no
 .Ar password
@@ -99,12 +104,12 @@ argument and specifying a different length here will result in no match being fo
 Otherwise, the default value is the length of
 .Ar password ,
 if given, or else six if not.
+.It Fl F
+Read the key as a hexadecimal string from the file named
+.Ar key .
 .It Fl f
-Read the key from the file named
-.Ar key
-instead of parsing
-.Ar key
-as a hexadecimal string.
+Read the key in raw, binary format from the file named
+.Ar key .
 .It Fl h
 Print the usage message and exit successfully.
 .It Fl i

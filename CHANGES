@@ -1,6 +1,7 @@
 Version Next
 
     - Added genotpurl(1) utility
+    - Added "-F" flag to otptool(1).
 
 Version 1.1.8 relesed October 30, 2017
 
