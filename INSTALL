@@ -12,3 +12,19 @@ To build and install mod_authn_otp:
     3. Run `make'
     4. Run `make install'
 
+Once the module is installed on your system, you'll also need to do the
+following steps to add it to Apache:
+
+    1. Add the "mod_authn_otp" module to your Apache config. This usually
+       involves adding a line looking something like this:
+
+        LoadModule authn_otp_module /usr/lib64/apache2/mod_authn_otp.so
+
+       There should already be a bunch of similar "LoadModule" lines nearby.
+
+    2. Enable the "mod_authn_otp" module, typically by running this command:
+
+        a2enmod authn_otp
+
+    3. Restart Apache
+
