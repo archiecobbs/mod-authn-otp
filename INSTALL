@@ -12,3 +12,7 @@ To build and install mod_authn_otp:
     3. Run `make'
     4. Run `make install'
 
+To configure apache to load the module:
+    1. Write `LoadModule authn_otp_module /usr/lib/apache2/modules/mod_authn_otp.so` to `/etc/apache2/mods-available/authn_otp.load`
+    2. Run `a2enmod authn_otp`
+
