@@ -17,7 +17,7 @@
 # limitations under the License.
 #
 
-AC_INIT([mod_authn_otp Apache2 authentication module supporting one-time passwords], [1.1.8], [https://github.com/archiecobbs/mod-authn-otp], [mod_authn_otp])
+AC_INIT([mod_authn_otp Apache2 authentication module supporting one-time passwords], [1.1.9], [https://github.com/archiecobbs/mod-authn-otp], [mod_authn_otp])
 AC_CONFIG_AUX_DIR(scripts)
 AM_INIT_AUTOMAKE
 dnl AM_MAINTAINER_MODE
