@@ -45,12 +45,13 @@ main(int argc, char **argv)
     int time_based = 1;
     unsigned char *key = NULL;
     int keylen = DEFAULT_KEYLEN;
+    int keylen2 = DEFAULT_KEYLEN;
     FILE *fp;
     int i, j;
     unsigned int b;
 
     // Parse command line
-    while ((i = getopt(argc, argv, "c:d:iI:k:L:p:")) != -1) {
+    while ((i = getopt(argc, argv, "c:d:iI:k:K:L:p:")) != -1) {
         switch (i) {
         case 'c':
             counter = atoi(optarg);
@@ -74,6 +75,9 @@ main(int argc, char **argv)
                     errx(1, "invalid hex key `%s': can't parse", optarg);
                 key[j] = b & 0xff;
             }
+            break;
+        case 'K':
+            keylen2 = atoi(optarg);
             break;
         case 'L':
             label = optarg;
@@ -115,7 +119,8 @@ main(int argc, char **argv)
 
     // Generate key (if not supplied)
     if (key == NULL) {
-        if ((key = malloc((keylen = DEFAULT_KEYLEN))) == NULL)
+        keylen = keylen2;
+        if ((key = malloc((keylen))) == NULL)
             err(1, "malloc");
         if ((fp = fopen(RANDOM_FILE, "r")) == NULL)
             err(1, "%s", RANDOM_FILE);
@@ -197,7 +202,7 @@ usage(void)
 #else
     fprintf(stderr, " -L label");
 #endif
-    fprintf(stderr, " [-c counter] [-d num-digits] [-p period] [-k key]\n");
+    fprintf(stderr, " [-c counter] [-d num-digits] [-p period] [-k key | -K keylength]\n");
     fprintf(stderr, "Options:\n");
     fprintf(stderr, "  -c\tInitial counter value (default %d)\n", DEFAULT_COUNTER);
     fprintf(stderr, "  -d\tNumber of digits (default %d)\n", DEFAULT_NUM_DIGITS);
@@ -209,6 +214,7 @@ usage(void)
 #endif
     fprintf(stderr, "  -p\tTime period in seconds (default %d)\n", DEFAULT_PERIOD);
     fprintf(stderr, "  -k\tSpecify hex key (default auto-generate and report)\n");
+    fprintf(stderr, "  -K\tSpecify a key length if key is to be generated (default: %d)\n", DEFAULT_KEYLEN);
 #ifdef DEFAULT_LABEL
     fprintf(stderr, "  -L\tSpecify label (default \"%s\")\n", DEFAULT_LABEL);
 #else
