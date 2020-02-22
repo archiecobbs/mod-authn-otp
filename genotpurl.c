@@ -21,6 +21,7 @@ static void usage(void);
 
 #define DEFAULT_COUNTER         0
 #define DEFAULT_KEYLEN          10
+#define MIN_KEYLEN              4
 #define DEFAULT_NUM_DIGITS      6
 #define DEFAULT_PERIOD          30
 
@@ -45,7 +46,6 @@ main(int argc, char **argv)
     int time_based = 1;
     unsigned char *key = NULL;
     int keylen = DEFAULT_KEYLEN;
-    int keylen2 = DEFAULT_KEYLEN;
     FILE *fp;
     int i, j;
     unsigned int b;
@@ -77,7 +77,11 @@ main(int argc, char **argv)
             }
             break;
         case 'K':
-            keylen2 = atoi(optarg);
+            if (key != NULL)
+                break;
+            keylen = atoi(optarg);
+            if (keylen < MIN_KEYLEN)
+                errx(1, "invalid key length `%s'", optarg);
             break;
         case 'L':
             label = optarg;
@@ -119,7 +123,6 @@ main(int argc, char **argv)
 
     // Generate key (if not supplied)
     if (key == NULL) {
-        keylen = keylen2;
         if ((key = malloc((keylen))) == NULL)
             err(1, "malloc");
         if ((fp = fopen(RANDOM_FILE, "r")) == NULL)

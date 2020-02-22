@@ -28,6 +28,7 @@
 .Fl I Ar issuer
 .Fl L Ar label
 .Op Fl k Ar key
+.Op Fl K Ar keylen
 .Op Fl i
 .Op Fl c Ar counter
 .Op Fl d Ar num-digits
@@ -80,14 +81,17 @@ Specify token issuer (e.g., "Example Industries, Inc.")
 Create an interval-based token instead of a time-based token.
 .It Fl k
 Specify the token binary secret key as a hexadecimal string.
-.It Fl K
-Specify a key length if key is to be generated.
 .Pp
 If no
 .Ar key
 is given,
 .Nm
 generates a random key and prints it to standard output.
+.It Fl K
+Specify generated key length.
+Ignored if
+.Fl k
+is also specified.
 .It Fl L
 Specify token label (e.g., "user@example.com")
 .It Fl p
