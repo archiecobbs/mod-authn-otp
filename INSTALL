@@ -8,9 +8,18 @@ To build and install mod_authn_otp:
         apache2-dev (Ubuntu)
         build-essential (Ubuntu)
 
-    2. Run `./configure'
-    3. Run `make'
-    4. Run `make install'
+    2. If you are building from GITHUB SOURCE instead of distribution tarball:
+
+        2.1. Ensure you have the following software packages installed:
+
+              autoconf
+              automake
+
+        2.2  Run `./autogen.sh`
+
+    3. Run `./configure'
+    4. Run `make'
+    5. Run `make install'
 
 Once the module is installed on your system, you'll also need to do the
 following steps to add it to Apache:
