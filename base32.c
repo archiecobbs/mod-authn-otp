@@ -56,9 +56,7 @@ static const unsigned char PADDING_CHAR = '=';
  */
 static void pad(unsigned char *buf, int len)
 {
-    int i;
-
-	for (i = 0; i < len; i++)
+	for (int i = 0; i < len; i++)
 		buf[i] = PADDING_CHAR;
 }
 
@@ -73,13 +71,13 @@ static unsigned char encode_char(unsigned char c)
 }
 
 /**
- * Decode given character into a 5 bits value.
+ * Decode given character into a 5 bits value. 
  * Returns -1 iff the argument given was an invalid base32 character
  * or a padding character.
  */
 static int decode_char(unsigned char c)
 {
-	char retval = -1;
+	signed char retval = -1;
 
 	if (c >= 'A' && c <= 'Z')
 		retval = c - 'A';
@@ -109,7 +107,7 @@ static int get_octet(int block)
 
 /**
  * Given a block id between 0 and 7 inclusive, this will return how many bits
- * we can drop at the end of the octet in which this block starts.
+ * we can drop at the end of the octet in which this block starts. 
  * For example, given block 0 it will return 3 because there are 3 bits
  * we don't care about at the end:
  *
@@ -135,7 +133,7 @@ static int get_offset(int block)
  * We need this as bitwise shifting by a negative offset is undefined
  * behavior.
  */
-static unsigned char shift_right(unsigned char byte, char offset)
+static unsigned char shift_right(unsigned char byte, signed char offset)
 {
 	if (offset > 0)
 		return byte >>  offset;
@@ -143,7 +141,7 @@ static unsigned char shift_right(unsigned char byte, char offset)
 		return byte << -offset;
 }
 
-static unsigned char shift_left(unsigned char byte, char offset)
+static unsigned char shift_left(unsigned char byte, signed char offset)
 {
 	return shift_right(byte, - offset);
 }
@@ -156,12 +154,10 @@ static unsigned char shift_left(unsigned char byte, char offset)
  */
 static void encode_sequence(const unsigned char *plain, int len, unsigned char *coded)
 {
-    int block;
-
 	assert(CHAR_BIT == 8);  // not sure this would work otherwise
 	assert(len >= 0 && len <= 5);
 
-	for (block = 0; block < 8; block++) {
+	for (int block = 0; block < 8; block++) {
 		int octet = get_octet(block);  // figure out which octet this block starts in
 		int junk = get_offset(block);  // how many bits do we drop from this octet?
 
@@ -183,25 +179,20 @@ static void encode_sequence(const unsigned char *plain, int len, unsigned char *
 
 void base32_encode(const unsigned char *plain, size_t len, unsigned char *coded)
 {
-	size_t i;
-	size_t j;
-
 	// All the hard work is done in encode_sequence(),
 	// here we just need to feed it the data sequence by sequence.
-	for (i = 0, j = 0; i < len; i += 5, j += 8) {
+	for (size_t i = 0, j = 0; i < len; i += 5, j += 8) {
 		encode_sequence(&plain[i], min(len - i, 5), &coded[j]);
 	}
 }
 
 static int decode_sequence(const unsigned char *coded, unsigned char *plain)
 {
-    int block;
-
 	assert(CHAR_BIT == 8);
 	assert(coded && plain);
 
 	plain[0] = 0;
-	for (block = 0; block < 8; block++) {
+	for (int block = 0; block < 8; block++) {
 		int offset = get_offset(block);
 		int octet = get_octet(block);
 
@@ -221,10 +212,7 @@ static int decode_sequence(const unsigned char *coded, unsigned char *plain)
 size_t base32_decode(const unsigned char *coded, unsigned char *plain)
 {
 	size_t written = 0;
-	size_t i;
-	size_t j;
-
-	for (i = 0, j = 0; ; i += 8, j += 5) {
+	for (size_t i = 0, j = 0; ; i += 8, j += 5) {
 		int n = decode_sequence(&coded[i], &plain[j]);
 		written += n;
 		if (n < 5)
