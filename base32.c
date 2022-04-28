@@ -79,7 +79,7 @@ static unsigned char encode_char(unsigned char c)
  */
 static int decode_char(unsigned char c)
 {
-	char retval = -1;
+	int retval = -1;
 
 	if (c >= 'A' && c <= 'Z')
 		retval = c - 'A';
@@ -135,7 +135,7 @@ static int get_offset(int block)
  * We need this as bitwise shifting by a negative offset is undefined
  * behavior.
  */
-static unsigned char shift_right(unsigned char byte, char offset)
+static unsigned char shift_right(unsigned char byte, int offset)
 {
 	if (offset > 0)
 		return byte >>  offset;
@@ -143,7 +143,7 @@ static unsigned char shift_right(unsigned char byte, char offset)
 		return byte << -offset;
 }
 
-static unsigned char shift_left(unsigned char byte, char offset)
+static unsigned char shift_left(unsigned char byte, int offset)
 {
 	return shift_right(byte, - offset);
 }
