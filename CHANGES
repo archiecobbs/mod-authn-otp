@@ -1,4 +1,4 @@
-Version Next
+Version 1.1.10 released May 4, 2022
 
     - Fixed bug in genotpurl on platforms with signed "char" (pr #46)
     - Added "-K" flag to genotpurl tool to specify key length (pr #43)
