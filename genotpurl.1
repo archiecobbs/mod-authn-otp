@@ -38,8 +38,8 @@
 .Nm
 is a utility for generating URLs for the Google Authenticator cell phone app, which
 generates one-time passwords compatible with the HOTP/OATH algorithm defined by RFC 4226.
-When such and URL is clicked on a cell phone, the token is automatically installed
-into the Google Authenticator app. This is a convenient way to deploy such tokens.
+When an URL is processed by the Google Authenticator app, the corresponding secure token
+is automatically installed into the app.
 .Pp
 The
 .Ar issuer
@@ -54,7 +54,9 @@ If no
 .Ar key
 is given,
 .Nm
-generates a random key and prints it to standard output.
+generates a random key and prints it to standard error;
+this key must then be installed into the server application that verifies the one-time passwords
+and associated with the user who will be using the secure token.
 .Pp
 The
 .Fl i ,
@@ -101,7 +103,15 @@ Ignored if
 .Fl i
 is given.
 .El
+.Sh EXAMPLES
+.Bk -words
+To generate a new secure token and generate the corresponding QR code:
+.Pp
+genotpurl -I "Acme, Inc" -L user@acme.com | qrencode -s 6 -o qrcode.png
+.Ek
 .Sh SEE ALSO
+.Xr qrencode 1
+.Pp
 .Rs
 .%T "mod_authn_otp: Apache module for one-time password authentication"
 .%O "https://github.com/archiecobbs/mod-authn-otp"
