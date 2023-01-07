@@ -60,7 +60,8 @@ echo "running autoconf"
 ${AUTOCONF} -f -i
 
 if [ "$1" = "-c" ]; then
+    shift
     echo "running configure"
-    ./configure
+    ./configure ${1+"$@"}
 fi
 
