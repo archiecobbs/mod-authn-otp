@@ -30,19 +30,21 @@ install-exec-local: module
 install-exec-hook:
 		test -z "$(STRIP)" || $(STRIP) $(DESTDIR)`$(APXS) -q LIBEXECDIR`/mod_authn_otp.so
 		test -z "$(STRIP)" || $(STRIP) $(DESTDIR)$(bindir)/otptool
+		test -z "$(STRIP)" || $(STRIP) $(DESTDIR)$(bindir)/otplock
 		test -z "$(STRIP)" || $(STRIP) $(DESTDIR)$(bindir)/genotpurl
 
-bin_PROGRAMS=       otptool genotpurl
+bin_PROGRAMS=       otptool otplock genotpurl
 
-noinst_HEADERS=     otptool.h errinc.h base32.h
+noinst_HEADERS=     otptool.h otplock.h errinc.h base32.h
 
-man_MANS=           otptool.1 genotpurl.1
+man_MANS=           otptool.1 otplock.1 genotpurl.1
 
 otptool_SOURCES=    otptool.c hotp.c motp.c phex.c
+
+otplock_SOURCES=    otplock.c
 
 genotpurl_SOURCES=  genotpurl.c base32.c
 
 CLEANFILES=         *.la *.lo *.o *.so *.slo .libs/*
 
-EXTRA_DIST=         CHANGES LICENSE mod_authn_otp.c genotpurl.c users.sample otptool.1 genotpurl.1 base32.c
-
+EXTRA_DIST=         CHANGES LICENSE mod_authn_otp.c genotpurl.c users.sample otptool.1 otplock.1 genotpurl.1 base32.c

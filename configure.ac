@@ -51,6 +51,8 @@ AC_SUBST(CFLAGS)
 # Check for required libraries
 AC_CHECK_LIB(crypto, EVP_sha1,,
 	[AC_MSG_ERROR([required library libcrypto missing])])
+AC_CHECK_LIB(apr-1, apr_file_lock,,
+	[AC_MSG_ERROR([required library libapr missing])])
 
 # Check for optional functions
 AC_CHECK_FUNCS(strptime)

@@ -1,0 +1,110 @@
+.\"  -*- nroff -*-
+.\"
+.\" otplock - Apache mod_authn_otp one-time users file locker
+.\"
+.\" Copyright 2023 Archie L. Cobbs <archie.cobbs@gmail.com>
+.\"
+.\" Licensed under the Apache License, Version 2.0 (the "License");
+.\" you may not use this file except in compliance with the License.
+.\" You may obtain a copy of the License at
+.\"
+.\"     http://www.apache.org/licenses/LICENSE-2.0
+.\"
+.\" Unless required by applicable law or agreed to in writing, software
+.\" distributed under the License is distributed on an "AS IS" BASIS,
+.\" WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\" See the License for the specific language governing permissions and
+.\" limitations under the License.
+.\"/
+.Dd January 7, 2023
+.Dt OTPLOCK 1
+.Os
+.Sh NAME
+.Nm otplock
+.Nd Apache mod_authn_otp one-time users file locker
+.Sh SYNOPSIS
+.Nm otplock
+.Bk -words
+.Ar usersfile
+.Op command ...
+.Ek
+.Pp
+.Nm otplock
+.Fl e
+.Ar usersfile
+.Pp
+.Nm otplock
+.Fl h
+.Sh DESCRIPTION
+.Nm
+is a utility for safely accessing the
+.Ar mod_authn_otp
+users file while the Apache server is running.
+.Pp
+Because the users file is dynamically read and updated during normal server operation,
+it's not safe to simultaneously view or edit the file in a separate process without locking it first.
+.Pp
+This utility implements the same locking protocol as the
+.Ar mod_authn_otp
+module.
+It holds the exclusive lock while the given
+.Ar command
+executes.
+This means that long as
+.Ar command
+executes, all server requests that require
+.Ar mod_authn_otp
+for authentication will be temporarily suspended, so command execution should be as brief as possible.
+.Pp
+If no
+.Ar command
+is given,
+.Nm
+simply waits until a lock can be obtained and then exits.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl e
+Invoke
+.Ar $EDITOR
+with the given
+.Ar usersfile .
+.Pp
+If no
+.Ar $EDITOR
+environment variable is defined,
+.Xr vim 1
+is used.
+.It Fl h
+Print the usage message and exit successfully.
+.El
+.Sh RETURN VALUE
+.Nm
+exits with one of the following return values:
+.Bl -tag -width xxx
+.It 0
+The users file was successfully locked, and either no
+.Ar command
+was given, or the command exited normally.
+.It N
+The given
+.Ar command
+executed but exited with non-zero exit value
+.Ar N .
+.It 85
+.Nm
+was invoked with invalid command line flags or parameters.
+.It 86
+A system error occurred while either locking the file or launching
+.Ar command .
+.It 87
+The given
+.Ar command
+executed but terminated by catching a signal.
+.El
+.Sh SEE ALSO
+.Rs
+.%T "mod_authn_otp: Apache module for one-time password authentication"
+.%O "https://github.com/archiecobbs/mod-authn-otp"
+.Re
+.Sh AUTHOR
+.An Archie L. Cobbs Aq archie.cobbs@gmail.com
