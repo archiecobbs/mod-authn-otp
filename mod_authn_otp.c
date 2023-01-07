@@ -2,7 +2,7 @@
 /*
  * mod_authn_otp - Apache module for one-time password authentication
  *
- * Copyright 2009 Archie L. Cobbs <archie@dellroad.org>
+ * Copyright 2009 Archie L. Cobbs <archie.cobbs@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
