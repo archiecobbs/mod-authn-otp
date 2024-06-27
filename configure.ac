@@ -58,20 +58,19 @@ AC_CHECK_LIB(apr-1, apr_file_lock,,
 AC_CHECK_FUNCS(strptime)
 
 # Check for required header files
-AC_HEADER_STDC
 AC_CHECK_HEADERS(ctype.h errno.h openssl/evp.h openssl/hmac.h openssl/md5.h stdio.h string.h time.h unistd.h, [],
 	[AC_MSG_ERROR([required header file '$ac_header' not found])])
 AC_CHECK_HEADERS(err.h, [], [])
 
 # Command line flags
 AC_ARG_ENABLE(Werror,
-    AC_HELP_STRING([--enable-Werror],
+    AS_HELP_STRING([--enable-Werror],
         [enable compilation with -Werror flag (default NO)]),
     [test x"$enableval" = "xyes" && CFLAGS="${CFLAGS} -Werror"])
 
 # Generated files
 AC_CONFIG_FILES(Makefile)
-AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS(config.h)
 
 # Go
 AC_OUTPUT
