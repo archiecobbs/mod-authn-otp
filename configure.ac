@@ -61,6 +61,8 @@ AC_CHECK_FUNCS(strptime)
 AC_CHECK_HEADERS(ctype.h errno.h openssl/evp.h openssl/hmac.h openssl/md5.h stdio.h string.h time.h unistd.h, [],
 	[AC_MSG_ERROR([required header file '$ac_header' not found])])
 AC_CHECK_HEADERS(err.h, [], [])
+AC_CHECK_HEADERS(apr-1/apr_file_io.h)
+AC_CHECK_HEADERS(apr-1.0/apr_file_io.h)
 
 # Command line flags
 AC_ARG_ENABLE(Werror,

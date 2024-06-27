@@ -1,5 +1,6 @@
 Version Next
 
+    - Fixed build issue with libapr on some systems (issue #48)
     - Added otplock(1) utility (issue #38)
 
 Version 1.1.10 released May 4, 2022

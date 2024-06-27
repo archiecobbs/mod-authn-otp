@@ -18,11 +18,21 @@
  */
 
 #include "otplock.h"
+#include "config.h"
 
+#if HAVE_APR_1_APR_FILE_IO_H
 #include <apr-1/apr_file_io.h>
 #include <apr-1/apr_lib.h>
 #include <apr-1/apr_strings.h>
 #include <apr-1/apr_thread_proc.h>
+#elif HAVE_APR_1_0_APR_FILE_IO_H
+#include <apr-1.0/apr_file_io.h>
+#include <apr-1.0/apr_lib.h>
+#include <apr-1.0/apr_strings.h>
+#include <apr-1.0/apr_thread_proc.h>
+#else
+#error "libapr header files not found"
+#endif
 
 #define LOCKFILE_SUFFIX ".lock"
 #define DEFAULT_EDITOR  "vim"
