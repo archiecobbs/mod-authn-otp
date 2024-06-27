@@ -1,4 +1,4 @@
-Version Next
+Version 1.1.11 released June 27, 2024
 
     - Fixed build issue with libapr on some systems (issue #48)
     - Added otplock(1) utility (issue #38)
