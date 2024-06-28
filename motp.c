@@ -29,8 +29,8 @@ void
 motp(const u_char *key, size_t keylen, const char *pin, u_long counter, int ndigits, char *buf, size_t buflen)
 {
     u_char hash[MD5_DIGEST_LENGTH];
-    char hashbuf[256];
-    char keybuf[256];
+    char keybuf[keylen * 2 + 1];
+    char hashbuf[64 + (keylen * 2) + strlen(pin)];
 
     printhex(keybuf, sizeof(keybuf), key, keylen, keylen * 2);
     snprintf(hashbuf, sizeof(hashbuf), "%lu%s%s", counter, keybuf, pin);
