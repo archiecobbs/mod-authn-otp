@@ -19,10 +19,12 @@
 
 #include <sys/types.h>
 
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
-#include <stdio.h>
+#include <limits.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -32,9 +34,6 @@
 #include <openssl/md5.h>
 
 #include "errinc.h"
-
-/* Program name */
-#define PROG_NAME                   "otptool"
 
 /* Error exit values */
 #define EXIT_USAGE_ERROR            1           /* Incorrect command line usage */
@@ -55,3 +54,9 @@ extern void         motp(const u_char *key, size_t keylen, const char *pin, u_lo
 /* phex.c */
 extern void         printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digits);
 
+/* md5q.c */
+extern void         md5_quick(const void *data, size_t len, u_char *result);
+
+/* base32.c */
+extern void         base32_encode(const unsigned char *plain, size_t len, unsigned char *coded);
+extern size_t       base32_decode(const unsigned char *coded, unsigned char *plain);

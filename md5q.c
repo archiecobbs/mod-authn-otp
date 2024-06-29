@@ -19,22 +19,21 @@
 
 #include "otpdefs.h"
 
-/* Definitions */
-#define MOTP_NUM_BYTES      3
-
-/*
- * Generate an OTP using the mOTP algorithm defined by http://motp.sourceforge.net/
- */
 void
-motp(const u_char *key, size_t keylen, const char *pin, u_long counter, int ndigits, char *buf, size_t buflen)
+md5_quick(const void *data, size_t len, u_char *result)
 {
-    u_char hash[MD5_DIGEST_LENGTH];
-    char keybuf[keylen * 2 + 1];
-    char hashbuf[64 + (keylen * 2) + strlen(pin)];
+    EVP_MD_CTX *ctx;
+    u_int md5_len;
+    int r;
 
-    printhex(keybuf, sizeof(keybuf), key, keylen, keylen * 2);
-    snprintf(hashbuf, sizeof(hashbuf), "%lu%s%s", counter, keybuf, pin);
-    md5_quick(hashbuf, strlen(hashbuf), hash);
-    printhex(buf, buflen, hash, sizeof(hash), ndigits);
+    ctx = EVP_MD_CTX_new();
+    assert(ctx != NULL);
+    r = EVP_DigestInit_ex(ctx, EVP_md5(), NULL);
+    assert(r != 0);
+    r = EVP_DigestUpdate(ctx, data, len);
+    assert(r != 0);
+    r = EVP_DigestFinal_ex(ctx, result, &md5_len);
+    assert(r != 0);
+    assert(md5_len == MD5_DIGEST_LENGTH);
+    EVP_MD_CTX_free(ctx);
 }
-

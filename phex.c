@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-#include "otptool.h"
+#include "otpdefs.h"
 
 void
 printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digits)
@@ -27,7 +27,7 @@ printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digi
 
     if (buflen > 0)
         *buf = '\0';
-    for (i = 0; i / 2 < dlen && i < max_digits && i < buflen - 1; i++) {
+    for (i = 0; i / 2 < (int)dlen && i < max_digits && i < (int)buflen - 1; i++) {
         u_int val = data[i / 2];
         if ((i & 1) == 0)
             val >>= 4;

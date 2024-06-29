@@ -21,7 +21,7 @@ all-local:    module
 
 module: mod_authn_otp.c
 		if test "$(srcdir)" != "."; then $(CP) $(srcdir)/mod_authn_otp.c .; fi
-		$(APXS) -c -D_REENTRANT `echo $(GCC_WARN_FLAGS) | sed 's/ -/ -Wc,-/g'` -l crypto mod_authn_otp.c
+		$(APXS) -c -D_REENTRANT `echo $(GCC_WARN_FLAGS) | sed 's/ -/ -Wc,-/g'` -l crypto mod_authn_otp.c hotp.c motp.c phex.c md5q.c
 
 install-exec-local: module
 		mkdir -p "$(DESTDIR)`$(APXS) -q LIBEXECDIR`"
@@ -35,11 +35,11 @@ install-exec-hook:
 
 bin_PROGRAMS=       otptool otplock genotpurl
 
-noinst_HEADERS=     otptool.h otplock.h errinc.h base32.h
+noinst_HEADERS=     otpdefs.h errinc.h
 
 man_MANS=           otptool.1 otplock.1 genotpurl.1
 
-otptool_SOURCES=    otptool.c hotp.c motp.c phex.c
+otptool_SOURCES=    otptool.c hotp.c motp.c phex.c md5q.c
 
 otplock_SOURCES=    otplock.c
 
@@ -47,4 +47,4 @@ genotpurl_SOURCES=  genotpurl.c base32.c
 
 CLEANFILES=         *.la *.lo *.o *.so *.slo .libs/*
 
-EXTRA_DIST=         CHANGES LICENSE mod_authn_otp.c genotpurl.c users.sample otptool.1 otplock.1 genotpurl.1 base32.c
+EXTRA_DIST=         CHANGES LICENSE mod_authn_otp.c users.sample otptool.1 otplock.1 genotpurl.1

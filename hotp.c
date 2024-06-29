@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-#include "otptool.h"
+#include "otpdefs.h"
 
 /* Powers of ten */
 static const int    powers10[] = { 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 1000000000 };
@@ -68,4 +68,3 @@ hotp(const u_char *key, size_t keylen, uint64_t counter, int ndigits, char *buf1
           ndigits < max16 ? (value & ((1 << (4 * ndigits)) - 1)) : value);
     }
 }
-

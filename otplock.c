@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-#include "otplock.h"
+#include "otpdefs.h"
 #include "config.h"
 
 #if HAVE_APR_1_APR_FILE_IO_H
@@ -34,8 +34,19 @@
 #error "libapr header files not found"
 #endif
 
+/* Program name */
+#define PROG_NAME                   "otplock"
+
 #define LOCKFILE_SUFFIX ".lock"
 #define DEFAULT_EDITOR  "vim"
+
+/* Error exit values */
+#undef  EXIT_USAGE_ERROR
+#undef  EXIT_SYSTEM_ERROR
+
+#define EXIT_USAGE_ERROR            85          /* Incorrect command line usage */
+#define EXIT_SYSTEM_ERROR           86          /* Could not open file, etc. */
+#define EXIT_CAUGHT_SIGNAL          87
 
 extern const char *const *environ;
 

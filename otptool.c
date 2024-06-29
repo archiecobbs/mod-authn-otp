@@ -17,7 +17,10 @@
  * limitations under the License.
  */
 
-#include "otptool.h"
+#include "otpdefs.h"
+
+/* Program name */
+#define PROG_NAME                   "otptool"
 
 /* Definitions */
 #define OTP_BUF_SIZE       16
@@ -239,4 +242,3 @@ usage()
     fprintf(stderr, "  -d\tSpecify number of digits in the generated OTP(s) (default %d)\n", DEFAULT_NUM_DIGITS);
     fprintf(stderr, "  -w\tSpecify size of window for additional counter values (default %d)\n", DEFAULT_WINDOW);
 }
-

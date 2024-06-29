@@ -2,16 +2,7 @@
  * Generates URLs for Google Authenticator.
  */
 
-#include <sys/types.h>
-
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <unistd.h>
-#include "errinc.h"
-#include "base32.h"
+#include "otpdefs.h"
 
 static void urlencode(FILE *fp, const char *s);
 static void print_key(FILE *fp, const unsigned char *key, u_int len, int base32);

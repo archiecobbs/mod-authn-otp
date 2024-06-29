@@ -1,3 +1,7 @@
+Version Next
+
+    - Refactor to avoid warnings and reduce code duplication (issue #49).
+
 Version 1.1.11 released June 27, 2024
 
     - Fixed build issue with libapr on some systems (issue #48)

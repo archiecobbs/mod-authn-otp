@@ -46,11 +46,7 @@
 #include "http_request.h"
 #include "util_md5.h"
 
-#include <time.h>
-#include <limits.h>
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
-#include <openssl/md5.h>
+#include "otpdefs.h"
 
 /* Apache backward-compat */
 #ifndef AUTHN_PROVIDER_VERSION
@@ -142,11 +138,8 @@ struct otp_user {
 
 /* Internal functions */
 static authn_status find_update_user(request_rec *r, const char *usersfile, struct otp_user *const user, int update);
-static void         hotp(const u_char *key, size_t keylen, uint64_t counter, int ndigits, char *buf10, char *buf16, size_t buflen);
-static void         motp(const u_char *key, size_t keylen, const char *pin, u_long counter, int ndigits, char *buf, size_t buflen);
 static int          parse_token_type(const char *type, struct otp_user *tokinfo);
 static apr_status_t print_user(apr_file_t *file, const struct otp_user *user);
-static void         printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digits);
 static void         pin_fake_basic_auth(request_rec *r, const char *user, const char *pin);
 static authn_status authn_otp_check_pin(request_rec *r, struct otp_config *const conf, struct otp_user *const user, const char *pin);
 static authn_status authn_otp_check_pin_external(request_rec *r, struct otp_config *const conf, const char *user, const char *pin);
@@ -592,90 +585,6 @@ print_user(apr_file_t *file, const struct otp_user *user)
         apr_file_printf(file, " %-7s %s %s", user->last_otp, tbuf, user->last_ip);
     }
     return apr_file_putc('\n', file);
-}
-
-/*
- * Generate an OTP using the algorithm specified in RFC 4226,
- */
-static void
-hotp(const u_char *key, size_t keylen, uint64_t counter, int ndigits, char *buf10, char *buf16, size_t buflen)
-{
-    const int max10 = sizeof(powers10) / sizeof(*powers10);
-    const int max16 = 8;
-    const EVP_MD *sha1_md = EVP_sha1();
-    u_char hash[EVP_MAX_MD_SIZE];
-    u_int hash_len;
-    u_char tosign[8];
-    int offset;
-    int value;
-    int i;
-
-    /* Encode counter */
-    for (i = sizeof(tosign) - 1; i >= 0; i--) {
-        tosign[i] = counter & 0xff;
-        counter >>= 8;
-    }
-
-    /* Compute HMAC */
-    HMAC(sha1_md, key, keylen, tosign, sizeof(tosign), hash, &hash_len);
-
-    /* Extract selected bytes to get 32 bit integer value */
-    offset = hash[hash_len - 1] & 0x0f;
-    value = ((hash[offset] & 0x7f) << 24) | ((hash[offset + 1] & 0xff) << 16)
-        | ((hash[offset + 2] & 0xff) << 8) | (hash[offset + 3] & 0xff);
-
-    /* Sanity check max # digits */
-    if (ndigits < 1)
-        ndigits = 1;
-
-    /* Generate decimal digits */
-    if (buf10 != NULL) {
-        apr_snprintf(buf10, buflen, "%0*d", ndigits < max10 ? ndigits : max10,
-          ndigits < max10 ? value % powers10[ndigits - 1] : value);
-    }
-
-    /* Generate hexadecimal digits */
-    if (buf16 != NULL) {
-        apr_snprintf(buf16, buflen, "%0*x", ndigits < max16 ? ndigits : max16,
-          ndigits < max16 ? (value & ((1 << (4 * ndigits)) - 1)) : value);
-    }
-}
-
-/*
- * Generate an OTP using the mOTP algorithm defined by http://motp.sourceforge.net/
- */
-static void
-motp(const u_char *key, size_t keylen, const char *pin, u_long counter, int ndigits, char *buf, size_t buflen)
-{
-    u_char hash[MD5_DIGEST_LENGTH];
-    char hashbuf[256];
-    char keybuf[256];
-
-    printhex(keybuf, sizeof(keybuf), key, keylen, keylen * 2);
-    apr_snprintf(hashbuf, sizeof(hashbuf), "%lu%s%s", counter, keybuf, pin);
-    MD5((u_char *)hashbuf, strlen(hashbuf), hash);
-    printhex(buf, buflen, hash, sizeof(hash), ndigits);
-}
-
-/*
- * Print hex digits into a buffer.
- */
-static void
-printhex(char *buf, size_t buflen, const u_char *data, size_t dlen, int max_digits)
-{
-    const char *hexdig = "0123456789abcdef";
-    int i;
-
-    if (buflen > 0)
-        *buf = '\0';
-    for (i = 0; i / 2 < (int)dlen && i < max_digits && i < (int)buflen - 1; i++) {
-        u_int val = data[i / 2];
-        if ((i & 1) == 0)
-            val >>= 4;
-        val &= 0x0f;
-        *buf++ = hexdig[val];
-        *buf = '\0';
-    }
 }
 
 /*

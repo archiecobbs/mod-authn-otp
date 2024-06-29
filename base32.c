@@ -25,7 +25,7 @@
 #include <assert.h>  // assert()
 #include <limits.h>  // CHAR_BIT
 
-#include "base32.h"
+#include "otpdefs.h"
 
 /**
  * Let this be a sequence of plain data before encoding:
