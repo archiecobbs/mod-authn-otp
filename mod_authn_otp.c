@@ -83,7 +83,7 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 /* Default configuration settings */
 #define DEFAULT_NUM_DIGITS              6
 #define DEFAULT_MAX_OFFSET              4
-#define DEFAULT_MAX_LINGER              (10 * 60)   /* 10 minutes */
+#define DEFAULT_MAX_LINGER              (10 * 60)   /* 10 minutes (but only if max_idle is not set) */
 #define DEFAULT_LOGOUT_IP_CHANGE        0
 #define DEFAULT_ALLOW_FALLTHROUGH       0
 #define DEFAULT_PIN_FAKE_BASIC_AUTH     0
@@ -107,11 +107,19 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 #define MAX_IP                          128
 #define MAX_TOKEN                       128
 
+/*
+ * Divide "OTPAuthMaxIdle" by this number to get the frequency with which we update the user's file to track idle time.
+ * We only update the file every so often for efficiency purposes. The reciprocal of this value is the maximum error in
+ * our idle time calculation.
+ */
+#define IDLE_UPDATE_DIVISOR             16
+
 /* Per-directory configuration */
 struct otp_config {
     char                *users_file;            /* Name of the users file */
     int                 max_offset;             /* Maximum allowed counter offset from expected value */
     int                 max_linger;             /* Maximum time for which the same OTP can be used repeatedly */
+    int                 max_idle;               /* Maximum time for which the same OTP can remain unused and continue to work */
     u_int               max_otp_failures;       /* Maximum wrong OTP values before account becomes locked, or zero for no limit */
     int                 logout_ip_change;       /* Auto-logout user if IP address changes */
     int                 allow_fallthrough;      /* Allow fall-through if OTP auth fails */
@@ -772,6 +780,8 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
     /* Check for reuse of previous OTP */
     now = time(NULL);
     if (strcmp(otp_given, user->last_otp) == 0) {
+        const char *time_desc;
+        int time_limit;
 
         /* Did user's IP address change? */
         if (conf->logout_ip_change && *user->last_ip != '\0' && strcmp(user->last_ip, USER_AGENT_IP(r)) != 0) {
@@ -780,17 +790,32 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
             goto fail;
         }
 
-        /* Is it within the configured linger time? */
-        if (now >= user->last_auth && now < user->last_auth + conf->max_linger) {
-            ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "accepting reuse of OTP for \"%s\" within %d sec. linger time",
-              user->username, conf->max_linger);
-            return AUTH_GRANTED;
+        /* Which time limit is being used: linger or idle? */
+        if (conf->max_linger != -1) {
+            time_limit = conf->max_linger;
+            time_desc = "linger";
+        } else {
+            time_limit = conf->max_idle;
+            time_desc = "idle";
         }
 
-        /* Report failure to the log */
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the previous OTP"
-          " but it has expired (max linger is %d sec.)", user->username, conf->max_linger);
-        goto fail;
+        /* Are we outside of the configured time limit (linger or idle)? */
+        if (now < user->last_auth || now >= user->last_auth + time_limit) {
+            ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided an expired OTP (max %s is %d sec.)",
+              user->username, time_desc, time_limit);
+            goto fail;
+        }
+
+        /* We are within the time limit - reuse of previous OTP is OK */
+        ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "accepting reuse of OTP for \"%s\" within %d sec. %s time",
+          user->username, time_limit, time_desc);
+
+        /* If tracking idle time, ensure that we are updating "user->last_auth" in the users file every so often */
+        if (conf->max_idle != -1 && now > user->last_auth + (conf->max_idle / IDLE_UPDATE_DIVISOR))
+            goto success2;
+
+        /* No need to update the users file right now */
+        return AUTH_GRANTED;
     }
 
     /* Get expected counter value and offset window */
@@ -846,10 +871,13 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
     goto fail;
 
 success:
-    /* Update user's last auth information and next expected offset */
+    /* Update user's last used OTP and next expected offset */
     user->offset = user->time_interval == 0 ? counter + offset + 1 : user->offset + offset;
     user->num_otp_failures = 0;
     apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", otp_given);
+
+success2:
+    /* Update user's last successful authentication time and origin */
     user->last_auth = now;
     apr_snprintf(user->last_ip, sizeof(user->last_ip), "%s", USER_AGENT_IP(r));
 
@@ -883,6 +911,8 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
     char hashbuf[256];
     char otpbuf[32];
     int counter = 0;
+    const char *time_desc;
+    int time_limit;
     int linger;
     time_t now;
 
@@ -914,22 +944,31 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
         return AUTH_USER_NOT_FOUND;
     }
 
+    /* Which time limit is being used: linger or idle? */
+    if (conf->max_linger != -1) {
+        time_limit = conf->max_linger;
+        time_desc = "linger";
+    } else {
+        time_limit = conf->max_idle;
+        time_desc = "idle";
+    }
+
     /* Determine the expected OTP, assuming OTP reuse if we are within the linger time and IP has not changed */
     now = time(NULL);
     if (now >= user->last_auth
-      && now < user->last_auth + conf->max_linger
+      && now < user->last_auth + time_limit
       && (!conf->logout_ip_change || *user->last_ip == '\0' || strcmp(user->last_ip, USER_AGENT_IP(r)) == 0)) {
         ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r,
-          "generating digest hash for \"%s\" assuming reuse of OTP within %d sec. linger time",
-          user->username, conf->max_linger);
+          "generating digest hash for \"%s\" assuming reuse of OTP within %d sec. %s time",
+          user->username, time_limit, time_desc);
         apr_snprintf(otpbuf, sizeof(otpbuf), "%s", user->last_otp);
         linger = 1;
     } else {
 
         /* Log note if previous OTP has expired */
         if (user->last_auth != 0 && *user->last_otp != '\0') {
-            ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "not using previous expired OTP for user \"%s\" (max linger is %d sec.)",
-              user->username, conf->max_linger);
+            ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "not using previous expired OTP for user \"%s\" (max %s is %d sec.)",
+              user->username, time_desc, time_limit);
         }
 
         /* Get expected counter value */
@@ -992,6 +1031,7 @@ get_config(request_rec *r)
         conf->users_file = apr_pstrdup(r->pool, dir_conf->users_file);
     conf->max_offset = dir_conf->max_offset;
     conf->max_linger = dir_conf->max_linger;
+    conf->max_idle = dir_conf->max_idle;
     conf->max_otp_failures = dir_conf->max_otp_failures;
     conf->logout_ip_change = dir_conf->logout_ip_change;
     conf->allow_fallthrough = dir_conf->allow_fallthrough;
@@ -1001,7 +1041,7 @@ get_config(request_rec *r)
     /* Apply defaults for any unset values */
     if (conf->max_offset == -1)
         conf->max_offset = DEFAULT_MAX_OFFSET;
-    if (conf->max_linger == -1)
+    if (conf->max_linger == -1 && conf->max_idle == -1)
         conf->max_linger = DEFAULT_MAX_LINGER;
     if (conf->logout_ip_change == -1)
         conf->logout_ip_change = DEFAULT_LOGOUT_IP_CHANGE;
@@ -1015,13 +1055,28 @@ get_config(request_rec *r)
         ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "No %s has been configured", "OTPAuthUsersFile");
         return NULL;
     }
+    if (conf->max_linger != -1 && conf->max_idle != -1) {
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
+          "At most one of %s or %s may be configured", "OTPAuthMaxLinger", "OTPAuthMaxIdle");
+        return NULL;
+    }
     if (conf->max_offset < 0) {
         ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "Invalid negative value for %s", "OTPAuthMaxOffset");
         return NULL;
     }
-    if (conf->max_linger < 0) {
+    if (conf->max_linger != -1 && conf->max_linger < 0) {
         ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "Invalid negative value for %s", "OTPAuthMaxLinger");
         return NULL;
+    }
+    if (conf->max_idle != -1) {
+        if (conf->max_idle < 0) {
+            ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "Invalid negative value for %s", "OTPAuthMaxIdle");
+            return NULL;
+        }
+        if (conf->max_idle < IDLE_UPDATE_DIVISOR) {
+            ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "%s must be at least %d seconds", "OTPAuthMaxIdle", IDLE_UPDATE_DIVISOR);
+            return NULL;
+        }
     }
     if (conf->max_otp_failures != -1 && conf->max_otp_failures < 0) {
         ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "Invalid negative value for %s", "OTPAuthMaxOTPFailure");
@@ -1043,6 +1098,7 @@ create_authn_otp_dir_config(apr_pool_t *p, char *d)
     conf->users_file = NULL;
     conf->max_offset = -1;
     conf->max_linger = -1;
+    conf->max_idle = -1;
     conf->max_otp_failures = 0;
     conf->logout_ip_change = -1;
     conf->allow_fallthrough = -1;
@@ -1064,6 +1120,7 @@ merge_authn_otp_dir_config(apr_pool_t *p, void *base_conf, void *new_conf)
         conf->users_file = apr_pstrdup(p, conf1->users_file);
     conf->max_offset = conf2->max_offset != -1 ? conf2->max_offset : conf1->max_offset;
     conf->max_linger = conf2->max_linger != -1 ? conf2->max_linger : conf1->max_linger;
+    conf->max_idle = conf2->max_idle != -1 ? conf2->max_idle : conf1->max_idle;
     conf->max_otp_failures = conf2->max_otp_failures != 0 ? conf2->max_otp_failures : conf1->max_otp_failures;
     conf->logout_ip_change = conf2->logout_ip_change != -1 ? conf2->logout_ip_change : conf1->logout_ip_change;
     conf->allow_fallthrough = conf2->allow_fallthrough != -1 ? conf2->allow_fallthrough : conf1->allow_fallthrough;
@@ -1165,6 +1222,11 @@ static const command_rec authn_otp_cmds[] =
         (void *)APR_OFFSETOF(struct otp_config, max_linger),
         OR_AUTHCFG,
         "maximum time (in seconds) for which a one-time password can be repeatedly used"),
+    AP_INIT_TAKE1("OTPAuthMaxIdle",
+        ap_set_int_slot,
+        (void *)APR_OFFSETOF(struct otp_config, max_idle),
+        OR_AUTHCFG,
+        "maximum time (in seconds) between requests before a one-time password can no longer be used"),
     AP_INIT_TAKE1("OTPAuthMaxOTPFailure",
         ap_set_int_slot,
         (void *)APR_OFFSETOF(struct otp_config, max_otp_failures),

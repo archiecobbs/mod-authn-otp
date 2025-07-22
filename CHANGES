@@ -1,5 +1,6 @@
 Version Next
 
+    - Added "OTPAuthMaxIdle" as an alternative to "OTPAuthMaxLinger" (issue #51).
     - Refactor to avoid warnings and reduce code duplication (issue #49).
 
 Version 1.1.11 released June 27, 2024
