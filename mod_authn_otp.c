@@ -141,7 +141,8 @@ static authn_status find_update_user(request_rec *r, const char *usersfile, stru
 static int          parse_token_type(const char *type, struct otp_user *tokinfo);
 static apr_status_t print_user(apr_file_t *file, const struct otp_user *user);
 static void         pin_fake_basic_auth(request_rec *r, const char *user, const char *pin);
-static authn_status authn_otp_check_pin(request_rec *r, struct otp_config *const conf, struct otp_user *const user, const char *pin);
+static authn_status authn_otp_check_pin(request_rec *r,
+                        struct otp_config *const conf, struct otp_user *const user, const char *pin);
 static authn_status authn_otp_check_pin_external(request_rec *r, struct otp_config *const conf, const char *user, const char *pin);
 static authn_status authn_otp_check_password(request_rec *r, const char *username, const char *password);
 static authn_status authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm, char **rethash);
@@ -739,7 +740,8 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
         /* Determine the length of the PIN that the user supplied */
         pinlen = strlen(otp_given) - user->num_digits;
         if (pinlen < 0) {
-            ap_log_rerror(APLOG_MARK, conf->allow_fallthrough ? APLOG_INFO : APLOG_NOTICE, 0, r, "user \"%s\" provided a too-short OTP", user->username);
+            ap_log_rerror(APLOG_MARK, conf->allow_fallthrough ? APLOG_INFO : APLOG_NOTICE, 0, r,
+              "user \"%s\" provided a too-short OTP", user->username);
             return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
         }
 
@@ -761,7 +763,8 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
 
     /* Check OTP length */
     if (strlen(otp_given) != user->num_digits) {
-        ap_log_rerror(APLOG_MARK, conf->allow_fallthrough ? APLOG_INFO : APLOG_NOTICE, 0, r, "user \"%s\" OTP has the wrong length %d != %d",
+        ap_log_rerror(APLOG_MARK, conf->allow_fallthrough ? APLOG_INFO : APLOG_NOTICE, 0, r,
+          "user \"%s\" OTP has the wrong length %d != %d",
           user->username, (int)strlen(otp_given), user->num_digits);
         return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
     }
