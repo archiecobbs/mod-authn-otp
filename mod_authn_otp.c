@@ -704,11 +704,9 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
     int offset;
     time_t now;
 
-    /* Is the users file defined? */
-    if (conf->users_file == NULL) {
-        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "No OTPAuthUsersFile has been configured");
+    /* Handle invalid config */
+    if (conf == NULL)
         return AUTH_GENERAL_ERROR;
-    }
 
     /* Lookup user in the users file */
     memset(user, 0, sizeof(*user));
@@ -885,11 +883,9 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
     int linger;
     time_t now;
 
-    /* Is the users file configured? */
-    if (conf->users_file == NULL) {
-        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "No OTPAuthUsersFile has been configured");
+    /* Handle invalid config */
+    if (conf == NULL)
         return AUTH_GENERAL_ERROR;
-    }
 
     /* Lookup the user in the users file */
     memset(user, 0, sizeof(*user));
@@ -970,7 +966,9 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
 }
 
 /*
- * Get configuration
+ * Get the configuration that applies to the given request.
+ *
+ * Returns NULL and logs an error if configuration is invalid.
  */
 static struct otp_config *
 get_config(request_rec *r)
@@ -1008,6 +1006,12 @@ get_config(request_rec *r)
         conf->allow_fallthrough = DEFAULT_ALLOW_FALLTHROUGH;
     if (conf->pin_fake_basic_auth == -1)
         conf->pin_fake_basic_auth = DEFAULT_PIN_FAKE_BASIC_AUTH;
+
+    /* Validate config */
+    if (conf->users_file == NULL) {
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "No OTPAuthUsersFile has been configured");
+        return NULL;
+    }
 
     /* Done */
     return conf;
