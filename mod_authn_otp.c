@@ -758,7 +758,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
 
         /* Insert Basic Authentication header if PINFakeBasicAuth is set */
         if (conf->pin_fake_basic_auth)
-	    pin_fake_basic_auth(r, user->username, pinbuf);
+            pin_fake_basic_auth(r, user->username, pinbuf);
     }
 
     /* Check OTP length */
