@@ -1012,7 +1012,19 @@ get_config(request_rec *r)
 
     /* Validate config */
     if (conf->users_file == NULL) {
-        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "No OTPAuthUsersFile has been configured");
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "No %s has been configured", "OTPAuthUsersFile");
+        return NULL;
+    }
+    if (conf->max_offset < 0) {
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "Invalid negative value for %s", "OTPAuthMaxOffset");
+        return NULL;
+    }
+    if (conf->max_linger < 0) {
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "Invalid negative value for %s", "OTPAuthMaxLinger");
+        return NULL;
+    }
+    if (conf->max_otp_failures != -1 && conf->max_otp_failures < 0) {
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "Invalid negative value for %s", "OTPAuthMaxOTPFailure");
         return NULL;
     }
 
