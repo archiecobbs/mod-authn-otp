@@ -17,11 +17,11 @@
  * limitations under the License.
  */
 
-#include "apr_lib.h"
-#include "ap_config.h"
-#include "ap_provider.h"
-#include "mod_auth.h"
-#include "apr_base64.h"
+#include <apr_lib.h>
+#include <ap_config.h>
+#include <ap_provider.h>
+#include <mod_auth.h>
+#include <apr_base64.h>
 
 // Fix libapr pollution
 #undef PACKAGE_BUGREPORT
@@ -33,18 +33,18 @@
 #include "config.h"
 
 #define APR_WANT_STRFUNC
-#include "apr_want.h"
-#include "apr_strings.h"
-#include "apr_file_io.h"
-#include "apr_time.h"
+#include <apr_want.h>
+#include <apr_strings.h>
+#include <apr_file_io.h>
+#include <apr_time.h>
 
-#include "httpd.h"
-#include "http_config.h"
-#include "http_core.h"
-#include "http_log.h"
-#include "http_protocol.h"
-#include "http_request.h"
-#include "util_md5.h"
+#include <httpd.h>
+#include <http_config.h>
+#include <http_core.h>
+#include <http_log.h>
+#include <http_protocol.h>
+#include <http_request.h>
+#include <util_md5.h>
 
 #include "otpdefs.h"
 

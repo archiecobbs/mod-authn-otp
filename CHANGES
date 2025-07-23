@@ -1,7 +1,8 @@
-Version Next
+Version 1.1.12
 
     - Added "OTPAuthMaxIdle" as an alternative to "OTPAuthMaxLinger" (issue #51).
     - Refactor to avoid warnings and reduce code duplication (issue #49).
+    - Use pkg-config to find openssl and libapr (#50).
 
 Version 1.1.11 released June 27, 2024
 

@@ -20,25 +20,16 @@
 #include "otpdefs.h"
 #include "config.h"
 
-#if HAVE_APR_1_APR_FILE_IO_H
-#include <apr-1/apr_file_io.h>
-#include <apr-1/apr_lib.h>
-#include <apr-1/apr_strings.h>
-#include <apr-1/apr_thread_proc.h>
-#elif HAVE_APR_1_0_APR_FILE_IO_H
-#include <apr-1.0/apr_file_io.h>
-#include <apr-1.0/apr_lib.h>
-#include <apr-1.0/apr_strings.h>
-#include <apr-1.0/apr_thread_proc.h>
-#else
-#error "libapr header files not found"
-#endif
+#include <apr_file_io.h>
+#include <apr_lib.h>
+#include <apr_strings.h>
+#include <apr_thread_proc.h>
 
 /* Program name */
 #define PROG_NAME                   "otplock"
 
-#define LOCKFILE_SUFFIX ".lock"
-#define DEFAULT_EDITOR  "vim"
+#define LOCKFILE_SUFFIX             ".lock"
+#define DEFAULT_EDITOR              "vim"
 
 /* Error exit values */
 #undef  EXIT_USAGE_ERROR
@@ -48,13 +39,14 @@
 #define EXIT_SYSTEM_ERROR           86          /* Could not open file, etc. */
 #define EXIT_CAUGHT_SIGNAL          87
 
-extern const char *const *environ;
+extern char **environ;
 
 static void usage(void);
 
 int
 main(int argc, const char *const *argv)
 {
+    const char *const *ro_environ = (const char *const *)environ;
     char lockfile[APR_PATH_MAX];
     const char *usersfile;
     const char *editcmd[3];
@@ -67,7 +59,7 @@ main(int argc, const char *const *argv)
     int r;
 
     // Initialize APR
-	if ((status = apr_app_initialize(&argc, &argv, &environ)) != APR_SUCCESS) {
+	if ((status = apr_app_initialize(&argc, &argv, &ro_environ)) != APR_SUCCESS) {
         warnx("%s: %s", "apr_app_initialize", apr_strerror(status, errbuf, sizeof(errbuf)));
         r = EXIT_SYSTEM_ERROR;
         goto out0;
@@ -116,7 +108,7 @@ main(int argc, const char *const *argv)
             goto out2;
         }
         editcmd[0] = DEFAULT_EDITOR;
-        for (ev = environ; *ev != NULL; ev++) {
+        for (ev = ro_environ; *ev != NULL; ev++) {
             if (strncmp(*ev, "EDITOR=", 7) == 0) {
                 editcmd[0] = *ev + 7;
                 break;
@@ -160,7 +152,7 @@ main(int argc, const char *const *argv)
             r = EXIT_SYSTEM_ERROR;
             goto out4;
         }
-        if ((status = apr_proc_create(&proc, *argv, argv, environ, pattr, pool)) != APR_SUCCESS) {
+        if ((status = apr_proc_create(&proc, *argv, argv, ro_environ, pattr, pool)) != APR_SUCCESS) {
             warnx("%s: %s", "apr_proc_create", apr_strerror(status, errbuf, sizeof(errbuf)));
             r = EXIT_SYSTEM_ERROR;
             goto out4;
