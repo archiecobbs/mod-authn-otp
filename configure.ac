@@ -57,9 +57,21 @@ AC_SUBST(GCC_WARN_FLAGS)
 AC_SUBST(CFLAGS)
 
 # Check for required libraries
-PKG_CHECK_MODULES([DEPS], [openssl apr-1])
-CFLAGS="${CFLAGS} ${DEPS_CFLAGS}"
-LIBS="${LIBS} ${DEPS_LIBS}"
+PKG_CHECK_MODULES([OPENSSL], [openssl])
+CFLAGS="${CFLAGS} ${OPENSSL_CFLAGS}"
+LIBS="${LIBS} ${OPENSSL_LIBS}"
+[for APR_NAME in apr-1 apr libapr; do]
+    PKG_CHECK_MODULES([APR], ["$APR_NAME"], [APR_FOUND="yes"], [APR_FOUND="no"])
+    [if test x"$APR_FOUND" = "xyes"; then
+        break;
+    fi]
+    AC_MSG_NOTICE([Apache Portable Runtime library not found under pkg-config name "$APR_NAME"])
+[done]
+[if test x"$APR_FOUND" != "xyes"; then]
+    AC_MSG_ERROR([failed to find Apache Portable Runtime library])
+[fi]
+CFLAGS="${CFLAGS} ${APR_CFLAGS}"
+LIBS="${LIBS} ${APR_LIBS}"
 
 # Check for optional functions
 AC_CHECK_FUNCS(strptime)
