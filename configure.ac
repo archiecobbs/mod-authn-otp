@@ -25,6 +25,11 @@ AC_PREREQ(2.59)
 AC_PREFIX_DEFAULT(/usr)
 AC_PROG_MAKE_SET
 
+# Command line flags
+AC_ARG_ENABLE(Werror,
+    AS_HELP_STRING([--enable-Werror], [enable compilation with -Werror flag (default NO)]),
+    [test x"$enableval" = "xyes" && GCC_WARN_FLAGS="${GCC_WARN_FLAGS} -Werror"])
+
 # Check for required programs
 AC_PROG_CC
 AC_PROG_INSTALL
@@ -36,16 +41,12 @@ AC_PATH_PROG(APXS2, apxs2, "no", [/bin /sbin /usr/bin /usr/sbin /usr/local/bin /
 [test x"$APXS2" != "xno" && APXS="$APXS2"]
 
 # Add GCC warning flags
-[GCC_WARN_FLAGS=""
-if test x"$GCC" = "xyes"; then
-    GCC_WARN_FLAGS="-Wall -Waggregate-return -Wcast-align -Wchar-subscripts -Wcomment -Wformat \
+[if test x"$GCC" = "xyes"; then
+    GCC_WARN_FLAGS="${GCC_WARN_FLAGS} -Wall -Waggregate-return -Wcast-align -Wchar-subscripts -Wcomment -Wformat \
         -Wimplicit -Wmissing-declarations -Wmissing-prototypes -Wnested-externs -Wno-long-long \
         -Wparentheses -Wpointer-arith -Wreturn-type -Wswitch -Wtrigraphs -Wuninitialized -Wunused \
         -Wwrite-strings -Wshadow -Wstrict-prototypes -Wcast-qual"
 fi]
-AC_ARG_ENABLE(Werror,
-    AS_HELP_STRING([--enable-Werror], [enable compilation with -Werror flag (default NO)]),
-    [test x"$enableval" = "xyes" && GCC_WARN_FLAGS="${GCC_WARN_FLAGS} -Werror"])
 [CFLAGS="${CFLAGS} ${GCC_WARN_FLAGS}"]
 AC_SUBST(GCC_WARN_FLAGS)
 AC_SUBST(CFLAGS)
