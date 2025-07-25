@@ -50,12 +50,6 @@ AC_PATH_PROG(CP, cp)
     [fi]
 [fi]
 
-[if test x"$SSL" != "x"; then]
-    CPPFLAGS="$CPPFLAGS -I$SSL/include"
-    LDFLAGS="$LDFLAGS -L$SSL/lib"
-    AC_MSG_NOTICE([Using OpenSSL from "--with-ssl=$SSL"])
-[fi]
-
 # Add GCC warning flags
 [if test x"$GCC" = "xyes"; then
     GCC_WARN_FLAGS="${GCC_WARN_FLAGS} -Wall -Waggregate-return -Wcast-align -Wchar-subscripts -Wcomment -Wformat \
@@ -68,6 +62,10 @@ AC_SUBST(GCC_WARN_FLAGS)
 AC_SUBST(CFLAGS)
 
 # Check for required libraries
+[if test x"$SSL" != "x"; then]
+    PKG_CONFIG_PATH="$SSL/lib/pkgconfig:$PKG_CONFIG_PATH"
+    AC_MSG_NOTICE([PKG_CONFIG_PATH prefixed with "$SSL/lib/pkgconfig"])
+[fi]
 PKG_CHECK_MODULES([OPENSSL], [openssl])
 CFLAGS="${CFLAGS} ${OPENSSL_CFLAGS}"
 LIBS="${LIBS} ${OPENSSL_LIBS}"
