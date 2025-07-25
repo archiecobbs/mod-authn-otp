@@ -29,6 +29,11 @@ AC_PROG_MAKE_SET
 AC_ARG_WITH(apxs,
     AS_HELP_STRING([--with-apxs=PATH], [PATH is the pathname of the Apache tool [apxs]]),
     [APXS="$with_apxs"])
+
+AC_ARG_WITH(ssl,
+    AS_HELP_STRING([--with-ssl=PATH], [Specify prefix of OpenSSL installation]),
+    [SSL="$with_ssl"])
+
 AC_ARG_ENABLE(Werror,
     AS_HELP_STRING([--enable-Werror], [enable compilation with -Werror flag (default NO)]),
     [test x"$enableval" = "xyes" && GCC_WARN_FLAGS="${GCC_WARN_FLAGS} -Werror"])
@@ -43,6 +48,12 @@ AC_PATH_PROG(CP, cp)
     [if test x"$APXS" = "x" ; then]
         AC_MSG_ERROR([apxs utility not found; specify using "--with-apxs=PATH"])
     [fi]
+[fi]
+
+[if test x"$SSL" != "x"; then]
+    CPPFLAGS="$CPPFLAGS -I$SSL/include"
+    LDFLAGS="$LDFLAGS -L$SSL/lib"
+    AC_MSG_NOTICE([Using OpenSSL from "--with-ssl=$SSL"])
 [fi]
 
 # Add GCC warning flags
