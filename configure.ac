@@ -61,7 +61,7 @@ PKG_CHECK_MODULES([OPENSSL], [openssl])
 CFLAGS="${CFLAGS} ${OPENSSL_CFLAGS}"
 LIBS="${LIBS} ${OPENSSL_LIBS}"
 [for APR_NAME in apr-1 apr libapr; do]
-    PKG_CHECK_MODULES([APR], ["$APR_NAME"], [APR_FOUND="yes"], [APR_FOUND="no"])
+    PKG_CHECK_MODULES([APR], [${APR_NAME}], [APR_FOUND="yes"], [APR_FOUND="no"])
     [if test x"$APR_FOUND" = "xyes"; then
         break;
     fi]
