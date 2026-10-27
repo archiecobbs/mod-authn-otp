@@ -145,7 +145,7 @@ struct otp_user {
 };
 
 /* Internal functions */
-static authn_status find_update_user(request_rec *r, const char *usersfile, struct otp_user *const user, int update);
+static authn_status find_update_user(request_rec *r, const struct otp_config *conf, struct otp_user *const user, int update);
 static int          parse_token_type(const char *type, struct otp_user *tokinfo);
 static apr_status_t print_user(apr_file_t *file, const struct otp_user *user);
 static void         pin_fake_basic_auth(request_rec *r, const char *user, const char *pin);
@@ -173,7 +173,7 @@ static apr_thread_mutex_t *mutex;
  * Note: finding, the "user" structure must be initialized with zeroes.
  */
 static authn_status
-find_update_user(request_rec *r, const char *usersfile, struct otp_user *const user, const int update)
+find_update_user(request_rec *r, const struct otp_config *const conf, struct otp_user *const user, const int update)
 {
     char invalid_reason[128];
     char newusersfile[APR_PATH_MAX];
@@ -190,7 +190,7 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
 
     /* If updating, open and lock lockfile and grab mutex */
     if (update) {
-        apr_snprintf(lockusersfile, sizeof(lockusersfile), "%s%s", usersfile, LOCKFILE_SUFFIX);
+        apr_snprintf(lockusersfile, sizeof(lockusersfile), "%s%s", conf->users_file, LOCKFILE_SUFFIX);
         if ((status = apr_file_open(&lockfile, lockusersfile,
           APR_WRITE|APR_CREATE|APR_TRUNCATE, APR_UREAD|APR_UWRITE, r->pool)) != 0) {
             ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "can't open OTP users lock file \"%s\": %s",
@@ -214,15 +214,15 @@ find_update_user(request_rec *r, const char *usersfile, struct otp_user *const u
     }
 
     /* Open existing users file */
-    if ((status = apr_file_open(&file, usersfile, APR_READ, 0, r->pool)) != 0) {
+    if ((status = apr_file_open(&file, conf->users_file, APR_READ, 0, r->pool)) != 0) {
         ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "can't open OTP users file \"%s\": %s",
-          usersfile, apr_strerror(status, errbuf, sizeof(errbuf)));
+          conf->users_file, apr_strerror(status, errbuf, sizeof(errbuf)));
         goto fail;
     }
 
     /* Open new users file if updating */
     if (update) {
-        apr_snprintf(newusersfile, sizeof(newusersfile), "%s%s", usersfile, NEWFILE_SUFFIX);
+        apr_snprintf(newusersfile, sizeof(newusersfile), "%s%s", conf->users_file, NEWFILE_SUFFIX);
         if ((status = apr_file_open(&newfile, newusersfile,
           APR_WRITE|APR_CREATE|APR_TRUNCATE, APR_UREAD|APR_UWRITE, r->pool)) != 0) {
             ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "can't new open OTP users file \"%s\": %s", newusersfile,
@@ -401,7 +401,7 @@ found:
 invalid:
         /* Report invalid entry (but copy it anyway) */
         ap_log_rerror(APLOG_MARK, APLOG_WARNING, 0, r, "ignoring invalid entry in OTP users file \"%s\" on line %d: %s",
-          usersfile, linenum, invalid_reason);
+          conf->users_file, linenum, invalid_reason);
 
 copy:
         /* Copy line to new file */
@@ -417,7 +417,8 @@ copy:
 
     /* If we're not updating and we get here, then the user was not found */
     if (!update) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" not found in OTP users file \"%s\"", user->username, usersfile);
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" not found in OTP users file \"%s\"",
+          user->username, conf->users_file);
         return AUTH_USER_NOT_FOUND;
     }
 
@@ -430,9 +431,9 @@ copy:
     newfile = NULL;
 
     /* Replace old file with new one */
-    if ((status = apr_file_rename(newusersfile, usersfile, r->pool)) != 0) {
+    if ((status = apr_file_rename(newusersfile, conf->users_file, r->pool)) != 0) {
         ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "error renaming new OTP users file \"%s\" to \"%s\": %s",
-          newusersfile, usersfile, apr_strerror(status, errbuf, sizeof(errbuf)));
+          newusersfile, conf->users_file, apr_strerror(status, errbuf, sizeof(errbuf)));
         goto fail;
     }
 
@@ -720,7 +721,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
     /* Lookup user in the users file */
     memset(user, 0, sizeof(*user));
     apr_snprintf(user->username, sizeof(user->username), "%s", username);
-    if ((status = find_update_user(r, conf->users_file, user, 0)) != AUTH_USER_FOUND)
+    if ((status = find_update_user(r, conf, user, 0)) != AUTH_USER_FOUND)
         return status;
 
     /* Check for max failures */
@@ -736,7 +737,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
 
         /* Forget previous OTP */
         *user->last_otp = '\0';
-        find_update_user(r, conf->users_file, user, 1);
+        find_update_user(r, conf, user, 1);
         return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
     }
 
@@ -882,7 +883,7 @@ success2:
     apr_snprintf(user->last_ip, sizeof(user->last_ip), "%s", USER_AGENT_IP(r));
 
     /* Update user's record */
-    find_update_user(r, conf->users_file, user, 1);
+    find_update_user(r, conf, user, 1);
 
     /* Done */
     return AUTH_GRANTED;
@@ -891,7 +892,7 @@ fail:
     /* Update user's failure count */
     if (user->num_otp_failures < UINT_MAX) {
         user->num_otp_failures++;
-        find_update_user(r, conf->users_file, user, 1);
+        find_update_user(r, conf, user, 1);
     }
     return AUTH_DENIED;
 }
@@ -923,7 +924,7 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
     /* Lookup the user in the users file */
     memset(user, 0, sizeof(*user));
     apr_snprintf(user->username, sizeof(user->username), "%s", username);
-    if ((status = find_update_user(r, conf->users_file, user, 0)) != AUTH_USER_FOUND)
+    if ((status = find_update_user(r, conf, user, 0)) != AUTH_USER_FOUND)
         return status;
 
     /* Check for max failures */
@@ -1000,7 +1001,7 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
             user->offset = counter + 1;
         apr_snprintf(user->last_otp, sizeof(user->last_otp), "%s", otpbuf);
         user->last_auth = now;
-        find_update_user(r, conf->users_file, user, 1);
+        find_update_user(r, conf, user, 1);
     }
 
     /* Done */
