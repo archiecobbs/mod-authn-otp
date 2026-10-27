@@ -87,6 +87,7 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 #define DEFAULT_LOGOUT_IP_CHANGE        0
 #define DEFAULT_ALLOW_FALLTHROUGH       0
 #define DEFAULT_PIN_FAKE_BASIC_AUTH     0
+#define DEFAULT_USERS_GROUP_READABLE    0
 
 /* PIN configuration */
 #define PIN_CONFIG_LITERAL              0
@@ -117,6 +118,8 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 /* Per-directory configuration */
 struct otp_config {
     char                *users_file;            /* Name of the users file */
+    apr_fileperms_t     users_mode;             /* File mode to use when writing new users file */
+    int                 users_group_readable;   /* The configuration setting that controls "users_mode" */
     int                 max_offset;             /* Maximum allowed counter offset from expected value */
     int                 max_linger;             /* Maximum time for which the same OTP can be used repeatedly */
     int                 max_idle;               /* Maximum time for which the same OTP can remain unused and continue to work */
@@ -192,7 +195,7 @@ find_update_user(request_rec *r, const struct otp_config *const conf, struct otp
     if (update) {
         apr_snprintf(lockusersfile, sizeof(lockusersfile), "%s%s", conf->users_file, LOCKFILE_SUFFIX);
         if ((status = apr_file_open(&lockfile, lockusersfile,
-          APR_WRITE|APR_CREATE|APR_TRUNCATE, APR_UREAD|APR_UWRITE, r->pool)) != 0) {
+          APR_WRITE|APR_CREATE|APR_TRUNCATE, conf->users_mode, r->pool)) != 0) {
             ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "can't open OTP users lock file \"%s\": %s",
               lockusersfile, apr_strerror(status, errbuf, sizeof(errbuf)));
             goto fail;
@@ -224,7 +227,7 @@ find_update_user(request_rec *r, const struct otp_config *const conf, struct otp
     if (update) {
         apr_snprintf(newusersfile, sizeof(newusersfile), "%s%s", conf->users_file, NEWFILE_SUFFIX);
         if ((status = apr_file_open(&newfile, newusersfile,
-          APR_WRITE|APR_CREATE|APR_TRUNCATE, APR_UREAD|APR_UWRITE, r->pool)) != 0) {
+          APR_WRITE|APR_CREATE|APR_TRUNCATE, conf->users_mode, r->pool)) != 0) {
             ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "can't new open OTP users file \"%s\": %s", newusersfile,
               apr_strerror(status, errbuf, sizeof(errbuf)));
             goto fail;
@@ -1040,6 +1043,8 @@ get_config(request_rec *r)
     conf->pin_fake_basic_auth = dir_conf->pin_fake_basic_auth;
 
     /* Apply defaults for any unset values */
+    if (conf->users_group_readable == -1)
+        conf->users_group_readable = DEFAULT_USERS_GROUP_READABLE;
     if (conf->max_offset == -1)
         conf->max_offset = DEFAULT_MAX_OFFSET;
     if (conf->max_linger == -1 && conf->max_idle == -1)
@@ -1050,6 +1055,11 @@ get_config(request_rec *r)
         conf->allow_fallthrough = DEFAULT_ALLOW_FALLTHROUGH;
     if (conf->pin_fake_basic_auth == -1)
         conf->pin_fake_basic_auth = DEFAULT_PIN_FAKE_BASIC_AUTH;
+
+    /* Derive "users_mode" from "users_group_readable" */
+    conf->users_mode = (APR_UREAD | APR_UWRITE);
+    if (conf->users_group_readable)
+        conf->users_mode |= (APR_GREAD | APR_GWRITE);
 
     /* Validate config */
     if (conf->users_file == NULL) {
@@ -1097,6 +1107,8 @@ create_authn_otp_dir_config(apr_pool_t *p, char *d)
     struct otp_config *conf = apr_pcalloc(p, sizeof(struct otp_config));
 
     conf->users_file = NULL;
+    conf->users_group_readable = -1;
+    conf->users_mode = 0;               // just to be safe
     conf->max_offset = -1;
     conf->max_linger = -1;
     conf->max_idle = -1;
@@ -1119,6 +1131,7 @@ merge_authn_otp_dir_config(apr_pool_t *p, void *base_conf, void *new_conf)
         conf->users_file = apr_pstrdup(p, conf2->users_file);
     else if (conf1->users_file != NULL)
         conf->users_file = apr_pstrdup(p, conf1->users_file);
+    conf->users_group_readable = conf2->users_group_readable != -1 ? conf2->users_group_readable : conf1->users_group_readable;
     conf->max_offset = conf2->max_offset != -1 ? conf2->max_offset : conf1->max_offset;
     conf->max_linger = conf2->max_linger != -1 ? conf2->max_linger : conf1->max_linger;
     conf->max_idle = conf2->max_idle != -1 ? conf2->max_idle : conf1->max_idle;
@@ -1213,6 +1226,11 @@ static const command_rec authn_otp_cmds[] =
         (void *)APR_OFFSETOF(struct otp_config, users_file),
         OR_AUTHCFG,
         "pathname of the one-time password users file"),
+    AP_INIT_FLAG("OTPAuthUsersFileGroupReadable",
+        ap_set_flag_slot,
+        (void *)APR_OFFSETOF(struct otp_config, users_group_readable),
+        OR_AUTHCFG,
+        "set file mode to allow group access when writing the users file"),
     AP_INIT_TAKE1("OTPAuthMaxOffset",
         ap_set_int_slot,
         (void *)APR_OFFSETOF(struct otp_config, max_offset),
