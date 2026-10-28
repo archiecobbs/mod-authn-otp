@@ -1033,6 +1033,7 @@ get_config(request_rec *r)
     conf = apr_pcalloc(r->pool, sizeof(*conf));
     if (dir_conf->users_file != NULL)
         conf->users_file = apr_pstrdup(r->pool, dir_conf->users_file);
+    conf->users_group_readable = dir_conf->users_group_readable;
     conf->max_offset = dir_conf->max_offset;
     conf->max_linger = dir_conf->max_linger;
     conf->max_idle = dir_conf->max_idle;
