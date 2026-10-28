@@ -1211,7 +1211,6 @@ static const authn_provider authn_otp_provider =
 static void
 register_hooks(apr_pool_t *p)
 {
-    ap_register_provider(p, AUTHN_PROVIDER_GROUP, OTP_AUTHN_PROVIDER_NAME, AUTHN_PROVIDER_VERSION, &authn_otp_provider);
     apr_status_t status;
     char errbuf[64];
 
@@ -1220,6 +1219,9 @@ register_hooks(apr_pool_t *p)
         ap_log_perror(APLOG_MARK, APLOG_ERR, 0, p, "can't create OTP mutex: %s", apr_strerror(status, errbuf, sizeof(errbuf)));
         return;
     }
+
+    /* Register authorization provider */
+    ap_register_provider(p, AUTHN_PROVIDER_GROUP, OTP_AUTHN_PROVIDER_NAME, AUTHN_PROVIDER_VERSION, &authn_otp_provider);
 }
 
 /* Configuration directives */
