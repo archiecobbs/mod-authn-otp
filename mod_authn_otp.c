@@ -84,6 +84,7 @@ module AP_MODULE_DECLARE_DATA authn_otp_module;
 #define DEFAULT_NUM_DIGITS              6
 #define DEFAULT_MAX_OFFSET              4
 #define DEFAULT_MAX_LINGER              (10 * 60)   /* 10 minutes (but only if max_idle is not set) */
+#define DEFAULT_MAX_OTP_FAILURES        0           /* unlimited */
 #define DEFAULT_LOGOUT_IP_CHANGE        0
 #define DEFAULT_ALLOW_FALLTHROUGH       0
 #define DEFAULT_PIN_FAKE_BASIC_AUTH     0
@@ -123,7 +124,7 @@ struct otp_config {
     int                 max_offset;             /* Maximum allowed counter offset from expected value */
     int                 max_linger;             /* Maximum time for which the same OTP can be used repeatedly */
     int                 max_idle;               /* Maximum time for which the same OTP can remain unused and continue to work */
-    u_int               max_otp_failures;       /* Maximum wrong OTP values before account becomes locked, or zero for no limit */
+    int                 max_otp_failures;       /* Maximum wrong OTP values before account becomes locked, or zero for no limit */
     int                 logout_ip_change;       /* Auto-logout user if IP address changes */
     int                 allow_fallthrough;      /* Allow fall-through if OTP auth fails */
     authn_provider_list *provlist;              /* Authorization providers for checking PINs */
@@ -1050,6 +1051,8 @@ get_config(request_rec *r)
         conf->max_offset = DEFAULT_MAX_OFFSET;
     if (conf->max_linger == -1 && conf->max_idle == -1)
         conf->max_linger = DEFAULT_MAX_LINGER;
+    if (conf->max_otp_failures == -1)
+        conf->max_otp_failures = DEFAULT_MAX_OTP_FAILURES;
     if (conf->logout_ip_change == -1)
         conf->logout_ip_change = DEFAULT_LOGOUT_IP_CHANGE;
     if (conf->allow_fallthrough == -1)
@@ -1090,7 +1093,7 @@ get_config(request_rec *r)
             return NULL;
         }
     }
-    if (conf->max_otp_failures != -1 && conf->max_otp_failures < 0) {
+    if (conf->max_otp_failures < 0) {
         ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "Invalid negative value for %s", "OTPAuthMaxOTPFailure");
         return NULL;
     }
@@ -1113,7 +1116,7 @@ create_authn_otp_dir_config(apr_pool_t *p, char *d)
     conf->max_offset = -1;
     conf->max_linger = -1;
     conf->max_idle = -1;
-    conf->max_otp_failures = 0;
+    conf->max_otp_failures = -1;
     conf->logout_ip_change = -1;
     conf->allow_fallthrough = -1;
     conf->provlist = NULL;
@@ -1136,7 +1139,7 @@ merge_authn_otp_dir_config(apr_pool_t *p, void *base_conf, void *new_conf)
     conf->max_offset = conf2->max_offset != -1 ? conf2->max_offset : conf1->max_offset;
     conf->max_linger = conf2->max_linger != -1 ? conf2->max_linger : conf1->max_linger;
     conf->max_idle = conf2->max_idle != -1 ? conf2->max_idle : conf1->max_idle;
-    conf->max_otp_failures = conf2->max_otp_failures != 0 ? conf2->max_otp_failures : conf1->max_otp_failures;
+    conf->max_otp_failures = conf2->max_otp_failures != -1 ? conf2->max_otp_failures : conf1->max_otp_failures;
     conf->logout_ip_change = conf2->logout_ip_change != -1 ? conf2->logout_ip_change : conf1->logout_ip_change;
     conf->allow_fallthrough = conf2->allow_fallthrough != -1 ? conf2->allow_fallthrough : conf1->allow_fallthrough;
     copy_provider_list(p, &conf->provlist, conf2->provlist != NULL ? conf2->provlist : conf1->provlist);
