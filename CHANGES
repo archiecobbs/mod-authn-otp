@@ -1,6 +1,7 @@
 Version Next
 
     - Added "OTPAuthUsersFileGroupReadable" configuration setting (issue #56)
+    - Allow some configuration directives in server and virtual host contexts (issue #56)
 
 Version 1.1.12 released July 26, 2025
 
