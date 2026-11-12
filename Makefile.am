@@ -21,7 +21,7 @@ all-local:    module
 
 module: mod_authn_otp.c
 		if test "$(srcdir)" != "."; then $(CP) $(srcdir)/mod_authn_otp.c .; fi
-		$(APXS) -c -D_REENTRANT `echo $(GCC_WARN_FLAGS) | sed 's/ -/ -Wc,-/g'` -l crypto mod_authn_otp.c hotp.c motp.c phex.c md5q.c
+		$(APXS) -c -D_REENTRANT $(OPENSSL_CFLAGS) `echo $(GCC_WARN_FLAGS) | sed 's/ -/ -Wc,-/g'` $(OPENSSL_LIBS) mod_authn_otp.c hotp.c motp.c phex.c md5q.c
 
 install-exec-local: module
 		mkdir -p "$(DESTDIR)`$(APXS) -q LIBEXECDIR`"
