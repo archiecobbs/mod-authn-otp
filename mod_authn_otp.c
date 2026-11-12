@@ -730,7 +730,7 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
 
     /* Check for max failures */
     if (conf->max_otp_failures != 0 && user->num_otp_failures >= conf->max_otp_failures) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" has reached the maximum wrong OTP limit of %u",
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" has reached the maximum wrong OTP limit of %d",
           user->username, conf->max_otp_failures);
         return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
     }
@@ -867,10 +867,10 @@ authn_otp_check_password(request_rec *r, const char *username, const char *otp_g
 
     /* Report failure to the log */
     if (conf->max_otp_failures != 0) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the wrong OTP (%d/%d consecutive)",
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the wrong OTP (%u/%d consecutive)",
           user->username, user->num_otp_failures + 1, conf->max_otp_failures);
     } else {
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the wrong OTP (%d consecutive)",
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" provided the wrong OTP (%u consecutive)",
           user->username, user->num_otp_failures + 1);
     }
     goto fail;
@@ -933,7 +933,7 @@ authn_otp_get_realm_hash(request_rec *r, const char *username, const char *realm
 
     /* Check for max failures */
     if (conf->max_otp_failures != 0 && user->num_otp_failures >= conf->max_otp_failures) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" has reached the maximum wrong OTP limit of %u",
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, "user \"%s\" has reached the maximum wrong OTP limit of %d",
           user->username, conf->max_otp_failures);
         return conf->allow_fallthrough ? AUTH_USER_NOT_FOUND : AUTH_DENIED;
     }
