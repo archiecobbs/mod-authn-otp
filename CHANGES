@@ -1,4 +1,4 @@
-Version Next
+Version 1.1.13 released November 17, 2026
 
     - Added "OTPAuthUsersFileGroupReadable" configuration setting (issue #56)
     - Allow some configuration directives in server and virtual host contexts (issue #56)
